@@ -1,6 +1,6 @@
 {
   "recording": {
-    "enabled": true,
+    "enabled": false,
     "segmentMinutes": 10,
     "retentionDays": 7
   },

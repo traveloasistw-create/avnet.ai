@@ -34,6 +34,9 @@ async function setupUserBar() {
     const label = document.getElementById('userLabel');
     if (label) label.textContent = `👤 ${me.username}`;
     if (me.isAdmin) document.getElementById('adminTab')?.classList.remove('hidden');
+    // 中央錄影關閉時，隱藏「回放」分頁
+    const info = await fetch('/api/recording-info').then((r) => r.json());
+    if (!info.enabled) document.getElementById('playbackTab')?.classList.add('hidden');
   } catch {
     /* 忽略 */
   }

@@ -1,6 +1,7 @@
 // 管理頁：新增/編輯/刪除同事帳號，並勾選每個人能看的攝影機。
 
 let allCameras = [];
+let recordingEnabled = false;
 
 async function getJSON(url, opts) {
   const res = await fetch(url, opts);
@@ -159,6 +160,7 @@ async function loadCameras() {
     enCb.type = 'checkbox';
     enCb.checked = cam.enabled;
     enLabel.append(enCb, document.createTextNode(' 啟用'));
+    if (!recordingEnabled) recLabel.style.display = 'none';
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '儲存';
@@ -237,6 +239,12 @@ async function refresh() {
 async function init() {
   const me = await getJSON('/api/me');
   document.getElementById('userLabel').textContent = `👤 ${me.username}`;
+  const info = await getJSON('/api/recording-info');
+  recordingEnabled = !!info.enabled;
+  if (!recordingEnabled) {
+    document.getElementById('playbackTab')?.classList.add('hidden');
+    document.getElementById('camRecordLabel')?.classList.add('hidden');
+  }
   await refresh();
 }
 
