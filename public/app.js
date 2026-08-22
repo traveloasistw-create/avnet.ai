@@ -32,8 +32,20 @@ function createTile(cam) {
   label.className = 'label';
   label.innerHTML = `<span class="dot ${cam.status}"></span><span>${cam.name}</span>`;
 
+  const actions = document.createElement('div');
+  actions.className = 'tile-actions';
+
+  const snapBtn = document.createElement('button');
+  snapBtn.className = 'tile-btn';
+  snapBtn.textContent = '📸';
+  snapBtn.title = '擷取快照';
+  snapBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.open(`/api/snapshot/${encodeURIComponent(cam.id)}`, '_blank');
+  });
+
   const expand = document.createElement('button');
-  expand.className = 'expand';
+  expand.className = 'tile-btn';
   expand.textContent = '⛶';
   expand.title = '放大';
   expand.addEventListener('click', (e) => {
@@ -41,10 +53,12 @@ function createTile(cam) {
     tile.classList.toggle('zoomed');
   });
 
+  actions.append(snapBtn, expand);
+
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
 
-  tile.append(video, label, expand);
+  tile.append(video, label, actions);
   grid.appendChild(tile);
 
   attachStream(cam, video, tile);

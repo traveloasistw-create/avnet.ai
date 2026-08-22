@@ -1,5 +1,6 @@
 node_modules/
 streams/
+recordings/
 config/cameras.json
 *.log
 .DS_Store

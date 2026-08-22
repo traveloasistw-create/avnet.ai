@@ -1,4 +1,9 @@
 {
+  "recording": {
+    "enabled": true,
+    "segmentMinutes": 10,
+    "retentionDays": 7
+  },
   "cameras": [
     {
       "id": "frontdoor",
@@ -10,7 +15,8 @@
       "id": "backyard",
       "name": "後院（喬安）",
       "url": "rtsp://admin:密碼@192.168.1.52:554/live/ch00_1",
-      "enabled": true
+      "enabled": true,
+      "record": false
     },
     {
       "id": "c500_wide",

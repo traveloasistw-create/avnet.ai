@@ -4,6 +4,10 @@
 
 - 🎥 多台攝影機一次全部顯示成網格
 - 🔍 點畫面即可放大單一鏡頭、可全螢幕
+- 📹 **24 小時連續錄影**：自動切成時段檔案存到硬碟
+- ⏪ **回放**：選攝影機 + 日期，列出片段、播放、拖曳快轉、下載
+- 🗑️ **自動清理**：超過保留天數的舊錄影自動刪除，硬碟不爆
+- 📸 **即時快照**：一鍵擷取當下畫面
 - 🔄 攝影機斷線會自動重連
 - 🟢 每台顯示連線狀態燈號
 - ⚙️ 用一個設定檔管理所有攝影機，新增/移除不用改程式
@@ -53,6 +57,11 @@ cp config/cameras.example.json config/cameras.json
 
 ```json
 {
+  "recording": {
+    "enabled": true,
+    "segmentMinutes": 10,
+    "retentionDays": 7
+  },
   "cameras": [
     {
       "id": "livingroom",
@@ -64,12 +73,23 @@ cp config/cameras.example.json config/cameras.json
 }
 ```
 
+**`cameras` 每台攝影機欄位：**
+
 | 欄位 | 說明 |
 | --- | --- |
 | `id` | 唯一代號，只能用英文/數字（會用在網址） |
 | `name` | 顯示在畫面上的名稱，中文沒問題 |
 | `url` | 攝影機的 RTSP 串流網址（見下方） |
 | `enabled` | `false` 可暫時停用某台攝影機 |
+| `record` | 選填。`false` 表示這台只看即時、不錄影 |
+
+**`recording` 錄影設定（全域）：**
+
+| 欄位 | 說明 | 預設 |
+| --- | --- | --- |
+| `enabled` | 是否開啟錄影 | `true` |
+| `segmentMinutes` | 每段錄影檔的長度（分鐘） | `10` |
+| `retentionDays` | 保留幾天，超過自動刪除 | `7` |
 
 ### 4. 啟動
 
@@ -77,7 +97,10 @@ cp config/cameras.example.json config/cameras.json
 npm start
 ```
 
-打開瀏覽器進入 **http://localhost:8080** 就能看到所有畫面。
+打開瀏覽器進入 **http://localhost:8080**：
+
+- **即時** 分頁：所有攝影機畫面同時顯示，可放大、全螢幕、擷取快照（📸）
+- **回放** 分頁：選攝影機 + 日期 → 列出當天所有片段 → 點選播放、拖曳快轉、下載
 
 > 想從手機或其他電腦看：用執行主機的區網 IP，例如 `http://192.168.1.10:8080`。
 
@@ -143,9 +166,22 @@ docker compose up -d
 用環境變數調整：
 
 ```bash
-PORT=9000 npm start              # 換連接埠
-FFMPEG_PATH=/usr/local/bin/ffmpeg npm start   # 指定 ffmpeg 路徑
+PORT=9000 npm start                            # 換連接埠
+FFMPEG_PATH=/usr/local/bin/ffmpeg npm start    # 指定 ffmpeg 路徑
+RETENTION_DAYS=14 npm start                    # 錄影保留 14 天
+SEGMENT_MINUTES=5 npm start                    # 每段錄影 5 分鐘
 ```
+
+### 錄影會佔多少硬碟？
+
+錄影是「直接複製」攝影機的串流，大小取決於攝影機碼率。以常見設定粗估：
+
+- 1080p 約 2 Mbps → 每台每天約 **20 GB**
+- 用**子串流**（低解析度）錄影可大幅節省空間
+
+硬碟空間 ≈ `每台每天用量 × 攝影機數 × retentionDays`。
+空間不夠時：調低 `retentionDays`、對次要攝影機設 `"record": false`，或改用子串流錄影。
+錄影檔存在專案的 `recordings/` 資料夾。
 
 ---
 
@@ -158,13 +194,28 @@ FFMPEG_PATH=/usr/local/bin/ffmpeg npm start   # 指定 ffmpeg 路徑
 | `spawn ffmpeg ENOENT` | 沒裝 ffmpeg，或路徑不對（用 `FFMPEG_PATH` 指定）。 |
 | 畫面破裂/卡頓 | 改用子串流（低解析度），或確認網路頻寬足夠。 |
 | CPU 很高 | 正常情況幾乎不吃 CPU（純複製）。若很高，代表某台被迫重新編碼，檢查該攝影機格式。 |
+| 回放沒有片段 | 確認該攝影機 `record` 沒設成 `false`、`recording.enabled` 為 `true`，且已錄超過一段時間。 |
+| 硬碟被塞滿 | 調低 `retentionDays`、關掉次要攝影機錄影，或改用子串流錄影。 |
 
 ---
 
+## 專案結構
+
+```
+server.js            Express 伺服器與 API
+lib/config.js        讀取設定與預設值
+lib/cameras.js       每台一個 ffmpeg：同時輸出 HLS 即時串流 + 分段錄影
+lib/recordings.js    錄影檔查詢與過期自動清理
+public/              前端（即時看板 index.html + 回放 playback.html）
+config/cameras.json  你的攝影機與錄影設定（自行建立）
+streams/             HLS 即時串流暫存（開機自動清除）
+recordings/          錄影檔（依保留天數自動清理）
+```
+
 ## 技術棧
 
-- **後端**：Node.js + Express（串流管理、HLS 服務、狀態 API）
-- **轉檔**：ffmpeg（RTSP → HLS，直接複製串流）
+- **後端**：Node.js + Express（串流管理、HLS 服務、錄影/回放 API）
+- **轉檔/錄影**：ffmpeg（單一連線同時輸出 HLS 即時串流與分段 MP4，直接複製串流）
 - **前端**：原生 HTML/CSS/JS + [hls.js](https://github.com/video-dev/hls.js)
 
 ## 授權

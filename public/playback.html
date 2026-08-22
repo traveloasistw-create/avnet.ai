@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>錄影回放</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>📷 監視器看板</h1>
+        <nav class="tabs">
+          <a href="/">即時</a>
+          <a href="/playback.html" class="active">回放</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="playback">
+      <aside class="pb-sidebar">
+        <div class="pb-controls">
+          <label>
+            攝影機
+            <select id="cameraSelect"></select>
+          </label>
+          <label>
+            日期
+            <select id="dateSelect"></select>
+          </label>
+        </div>
+        <div id="clipList" class="clip-list"></div>
+      </aside>
+
+      <section class="pb-main">
+        <div class="pb-player">
+          <video id="player" controls></video>
+        </div>
+        <div class="pb-bar">
+          <span id="nowPlaying">請從左側選擇要回放的片段</span>
+          <span class="grow"></span>
+          <a id="downloadLink" class="download hidden" download>⬇ 下載</a>
+        </div>
+      </section>
+    </main>
+
+    <script src="/playback.js"></script>
+  </body>
+</html>
