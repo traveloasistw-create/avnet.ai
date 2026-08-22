@@ -47,14 +47,20 @@ if (cameras.length === 0) {
 ensureAdmin(); // 第一次啟動建立預設管理員
 
 const manager = new CameraManager(recording);
-cameras.forEach((c) => manager.start(c));
+manager.load(cameras);
 
 const cleanupTimer = recording.enabled
   ? startCleanupJob(recording.retentionDays)
   : null;
 
-// 依 id 快速查攝影機
-const cameraById = new Map(cameras.map((c) => [c.id, c]));
+// 產生一個不重複的攝影機代號
+function newCameraId() {
+  let id;
+  do {
+    id = 'cam_' + Math.random().toString(36).slice(2, 8);
+  } while (manager.get(id));
+  return id;
+}
 
 // ---- Web 伺服器 ----------------------------------------------------------
 const app = express();
@@ -108,12 +114,13 @@ app.get('/admin.html', requireAdmin, (req, res) =>
   res.sendFile(path.join(PUBLIC, 'admin.html'))
 );
 
-// 攝影機清單：只回傳這位使用者被授權的
+// 攝影機清單：只回傳這位使用者被授權且啟用中的
 app.get('/api/cameras', (req, res) => {
   const user = currentUser(req);
-  const allowed = new Set(allowedCameraIds(user, cameras));
+  const enabled = manager.enabled();
+  const allowed = new Set(allowedCameraIds(user, enabled));
   res.json(
-    cameras
+    enabled
       .filter((c) => allowed.has(c.id))
       .map((c) => ({
         id: c.id,
@@ -166,10 +173,70 @@ app.get('/api/snapshot/:id', guardCamera, (req, res) => {
 app.use('/streams', guardCamera, express.static(STREAMS_DIR));
 app.use('/recordings', guardCamera, express.static(RECORDINGS_DIR));
 
-// ---- 管理員 API ----
+// ---- 管理員 API：攝影機 ----
+// 回傳完整清單（含網址、啟用/錄影狀態）供管理頁編輯
 app.get('/api/admin/cameras', requireAdmin, (req, res) =>
-  res.json(cameras.map((c) => ({ id: c.id, name: c.name })))
+  res.json(
+    manager.list().map((c) => ({
+      id: c.id,
+      name: c.name,
+      url: c.url,
+      enabled: c.enabled !== false,
+      record: c.record !== false,
+      status: manager.status(c.id),
+    }))
+  )
 );
+
+app.post('/api/admin/cameras', requireAdmin, (req, res) => {
+  const { name, url, enabled, record } = req.body || {};
+  if (!name || !url) {
+    return res.status(400).json({ error: '名稱與 RTSP 網址為必填' });
+  }
+  try {
+    const cam = manager.add({
+      id: newCameraId(),
+      name,
+      url,
+      enabled: enabled !== false,
+      record: record !== false,
+    });
+    res.json({ ok: true, id: cam.id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/cameras/:id', requireAdmin, (req, res) => {
+  const { name, url, enabled, record } = req.body || {};
+  const patch = {};
+  if (typeof name === 'string') patch.name = name;
+  if (typeof url === 'string' && url) patch.url = url;
+  if (typeof enabled === 'boolean') patch.enabled = enabled;
+  if (typeof record === 'boolean') patch.record = record;
+  const ok = manager.update(req.params.id, patch);
+  if (!ok) return res.status(404).json({ error: '找不到攝影機' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/cameras/:id', requireAdmin, (req, res) => {
+  const id = req.params.id;
+  const ok = manager.remove(id);
+  if (!ok) return res.status(404).json({ error: '找不到攝影機' });
+  // 一併從所有使用者的授權清單移除這支攝影機
+  const users = loadUsers();
+  let changed = false;
+  for (const u of users) {
+    if (Array.isArray(u.cameras) && u.cameras.includes(id)) {
+      u.cameras = u.cameras.filter((c) => c !== id);
+      changed = true;
+    }
+  }
+  if (changed) saveUsers(users);
+  res.json({ ok: true });
+});
+
+// ---- 管理員 API：使用者 ----
 
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   res.json(
