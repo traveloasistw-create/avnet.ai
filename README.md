@@ -103,21 +103,38 @@ RTSP 網址格式通常是：
 - 若上面路徑不通，可在攝影機 App 或網頁後台開啟「ONVIF」，再用 ONVIF 工具查出實際路徑。
 - 建議監看用**子串流**（`ch00_1`），畫質夠用又省頻寬，多台同時看比較順。
 
-### 小米 Mi / 米家
+### 小米 Mi / 米家（含 C500 雙鏡版）
 
-小米攝影機**原廠韌體預設不開放 RTSP**，有兩種做法：
+⚠️ **重點**：新款小米攝影機（如 **C500 雙鏡版**、CW 系列）原廠韌體**不支援 RTSP，也沒有 ONVIF**，
+所以不能像喬安那樣直接填網址。要透過一個橋接工具把它轉出 RTSP。
 
-1. **支援 RTSP 的機型 / 開啟局域網功能**
-   部分小米/米家攝影機在設定裡有「局域網監控」或類似選項，開啟後會提供 RTSP 網址，直接填進來即可。
+**推薦做法：用 Micam 橋接（不用刷機，最穩）**
 
-2. **刷改裝韌體（進階）**
-   社群韌體如 [OpenMiio / xiaomi-cam 相關專案](https://github.com/al-one/hass-xiaomi-miot) 或 `MiCam` hack 可開啟 RTSP。
-   刷機有風險，請自行評估。
+[Micam](https://github.com/miiot/micam) 是社群做的小米攝影機 RTSP 橋接服務，用 Docker 執行：
+它會用你的小米帳號登入，把攝影機串流**在本地轉推成 RTSP**（內建 go2rtc），
+再把它給你的 RTSP 網址填進本系統的 `cameras.json` 即可。
 
-3. **透過 Home Assistant / go2rtc 橋接（最穩）**
-   若你已有 Home Assistant，可用 go2rtc 把小米雲端串流轉成 RTSP，再把那個 RTSP 網址填進本系統。
+安裝（需要 Docker）：
 
-> 💡 先用 [VLC 播放器] 測試：選「開啟網路串流」貼上 RTSP 網址，能播就代表網址正確，再填進設定檔。
+```bash
+mkdir -p /opt/micam && cd /opt/micam
+wget https://raw.githubusercontent.com/miiot/micam/refs/heads/main/docker-compose.yml
+docker compose up -d
+```
+
+啟動後照 Micam 說明登入你的小米帳號、選擇要橋接的攝影機，它會列出每台的 RTSP 網址，
+格式類似 `rtsp://<Micam主機IP>:8554/<攝影機代號>`。把該網址填進 `cameras.json` 即可。
+
+> **C500 是雙鏡頭**：Micam 通常會給你「廣角」與「望遠」兩條串流。
+> 在 `cameras.json` 裡放兩筆（`id` 用 `c500_wide`、`c500_tele`），看板上就會顯示成兩格。
+
+**其他做法（進階，不建議一般使用者）**
+
+- 已有 Home Assistant：可直接用 Micam 或 go2rtc 接進 HA，再取 RTSP 網址。
+- 刷改裝韌體：C500 較新，社群韌體支援有限且有變磚風險，不建議。
+
+> 💡 拿到任何 RTSP 網址後，先用 **VLC 播放器**（「開啟網路串流」貼上網址）測試，
+> 能播就代表網址正確，再填進設定檔。
 
 ---
 
