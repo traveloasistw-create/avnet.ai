@@ -1,0 +1,19 @@
+{
+  "name": "camera-wall",
+  "version": "1.0.0",
+  "description": "把小米、喬安等多台監視器畫面整合在同一個網頁看板的即時監看系統",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "hls.js": "^1.5.13"
+  },
+  "license": "MIT"
+}

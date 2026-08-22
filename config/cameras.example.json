@@ -1,0 +1,22 @@
+{
+  "cameras": [
+    {
+      "id": "livingroom",
+      "name": "客廳（小米）",
+      "url": "rtsp://使用者:密碼@192.168.1.50:554/stream1",
+      "enabled": true
+    },
+    {
+      "id": "frontdoor",
+      "name": "大門（喬安）",
+      "url": "rtsp://admin:密碼@192.168.1.51:554/live/ch00_0",
+      "enabled": true
+    },
+    {
+      "id": "backyard",
+      "name": "後院（喬安）",
+      "url": "rtsp://admin:密碼@192.168.1.52:554/live/ch00_0",
+      "enabled": false
+    }
+  ]
+}

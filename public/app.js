@@ -1,0 +1,159 @@
+// 監視器看板前端：抓取攝影機清單，為每台建立播放器，並用 hls.js 播 HLS 串流。
+
+const grid = document.getElementById('grid');
+const emptyEl = document.getElementById('empty');
+const colsSelect = document.getElementById('colsSelect');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+const players = new Map(); // id -> { hls, video, tile }
+
+async function fetchCameras() {
+  try {
+    const res = await fetch('/api/cameras');
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch (err) {
+    console.error('無法取得攝影機清單', err);
+    return [];
+  }
+}
+
+function createTile(cam) {
+  const tile = document.createElement('div');
+  tile.className = 'tile';
+  tile.dataset.id = cam.id;
+
+  const video = document.createElement('video');
+  video.muted = true;
+  video.autoplay = true;
+  video.playsInline = true;
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.innerHTML = `<span class="dot ${cam.status}"></span><span>${cam.name}</span>`;
+
+  const expand = document.createElement('button');
+  expand.className = 'expand';
+  expand.textContent = '⛶';
+  expand.title = '放大';
+  expand.addEventListener('click', (e) => {
+    e.stopPropagation();
+    tile.classList.toggle('zoomed');
+  });
+
+  // 點畫面也能切換放大
+  tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
+
+  tile.append(video, label, expand);
+  grid.appendChild(tile);
+
+  attachStream(cam, video, tile);
+  players.set(cam.id, { video, tile });
+}
+
+function showState(tile, msg) {
+  let el = tile.querySelector('.state-msg');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'state-msg';
+    tile.appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+function clearState(tile) {
+  tile.querySelector('.state-msg')?.remove();
+}
+
+function attachStream(cam, video, tile) {
+  showState(tile, '連線中…');
+
+  if (window.Hls && window.Hls.isSupported()) {
+    const hls = new Hls({
+      liveSyncDurationCount: 2, // 盡量貼近即時
+      maxBufferLength: 8,
+      manifestLoadingMaxRetry: Infinity,
+      manifestLoadingRetryDelay: 3000,
+      levelLoadingMaxRetry: Infinity,
+    });
+    hls.loadSource(cam.src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+      clearState(tile);
+    });
+    hls.on(Hls.Events.ERROR, (_evt, data) => {
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            showState(tile, '等待串流…');
+            setTimeout(() => hls.startLoad(), 3000);
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            showState(tile, '串流錯誤');
+            break;
+        }
+      }
+    });
+    const rec = players.get(cam.id);
+    if (rec) rec.hls = hls;
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari 原生支援 HLS
+    video.src = cam.src;
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(() => {});
+      clearState(tile);
+    });
+    video.addEventListener('error', () => showState(tile, '等待串流…'));
+  } else {
+    showState(tile, '此瀏覽器不支援 HLS');
+  }
+}
+
+async function init() {
+  const cameras = await fetchCameras();
+  if (cameras.length === 0) {
+    grid.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  cameras.forEach(createTile);
+  pollStatus();
+}
+
+// 定時更新每台攝影機的狀態燈號
+async function pollStatus() {
+  setInterval(async () => {
+    const cameras = await fetchCameras();
+    for (const cam of cameras) {
+      const rec = players.get(cam.id);
+      if (!rec) continue;
+      const dot = rec.tile.querySelector('.dot');
+      if (dot) dot.className = `dot ${cam.status}`;
+    }
+  }, 5000);
+}
+
+// ---- 控制項 ----
+colsSelect.addEventListener('change', () => {
+  const v = colsSelect.value;
+  if (v === 'auto') grid.removeAttribute('data-cols');
+  else grid.dataset.cols = v;
+});
+
+fullscreenBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// 按 Esc 取消放大檢視
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelector('.tile.zoomed')?.classList.remove('zoomed');
+  }
+});
+
+init();
