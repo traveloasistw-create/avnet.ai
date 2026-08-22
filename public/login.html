@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登入 - 監視器看板</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="login-wrap">
+      <form id="loginForm" class="login-box">
+        <h1>📷 監視器看板</h1>
+        <p class="login-sub">請登入</p>
+        <label>
+          帳號
+          <input id="username" type="text" autocomplete="username" required />
+        </label>
+        <label>
+          密碼
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit">登入</button>
+        <p id="err" class="login-err hidden"></p>
+      </form>
+    </div>
+    <script src="/login.js"></script>
+  </body>
+</html>

@@ -9,8 +9,28 @@ const downloadLink = document.getElementById('downloadLink');
 
 async function getJSON(url) {
   const res = await fetch(url);
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    throw new Error('未登入');
+  }
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
+}
+
+async function setupUserBar() {
+  try {
+    const me = await getJSON('/api/me');
+    const label = document.getElementById('userLabel');
+    if (label) label.textContent = `👤 ${me.username}`;
+    if (me.isAdmin)
+      document.getElementById('adminTab')?.classList.remove('hidden');
+  } catch {
+    /* 忽略 */
+  }
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
 }
 
 function fmtTime(iso) {
@@ -108,6 +128,8 @@ function play(clip) {
 cameraSelect.addEventListener('change', loadDates);
 dateSelect.addEventListener('change', loadClips);
 
+setupUserBar();
 loadCameras().catch((err) => {
-  clipList.innerHTML = `<div class="pb-empty">載入失敗：${err.message}</div>`;
+  if (err.message !== '未登入')
+    clipList.innerHTML = `<div class="pb-empty">載入失敗：${err.message}</div>`;
 });

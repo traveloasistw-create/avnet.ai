@@ -1,0 +1,17 @@
+{
+  "_說明": "此檔僅為範例格式。實際使用者由系統自動管理，存在 config/users.json（第一次啟動會自動建立管理員 admin/admin）。密碼欄位存的是雜湊值，請勿手動填寫；請登入後透過「管理」頁面新增與修改帳號。",
+  "users": [
+    {
+      "username": "admin",
+      "password": "<自動產生的雜湊，勿手改>",
+      "isAdmin": true,
+      "cameras": "*"
+    },
+    {
+      "username": "warehouse",
+      "password": "<自動產生的雜湊，勿手改>",
+      "isAdmin": false,
+      "cameras": ["frontdoor", "c500_wide"]
+    }
+  ]
+}

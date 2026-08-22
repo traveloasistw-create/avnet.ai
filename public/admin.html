@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>使用者管理</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>📷 監視器看板</h1>
+        <nav class="tabs">
+          <a href="/">即時</a>
+          <a href="/playback.html">回放</a>
+          <a href="/admin.html" class="active">管理</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <span id="userLabel" class="user-label"></span>
+        <button id="logoutBtn">登出</button>
+      </div>
+    </header>
+
+    <main class="admin">
+      <section class="admin-panel">
+        <h2>新增同事帳號</h2>
+        <form id="addForm" class="admin-form">
+          <label>帳號 <input id="newUser" type="text" required /></label>
+          <label>密碼 <input id="newPass" type="text" required /></label>
+          <label class="chk">
+            <input id="newAdmin" type="checkbox" /> 設為管理員（可看全部、可管理帳號）
+          </label>
+          <div class="cam-picker" id="newCams"></div>
+          <button type="submit">新增</button>
+          <p id="addErr" class="login-err hidden"></p>
+        </form>
+      </section>
+
+      <section class="admin-panel">
+        <h2>現有帳號</h2>
+        <div id="userList" class="user-list"></div>
+      </section>
+    </main>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

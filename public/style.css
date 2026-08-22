@@ -90,19 +90,38 @@ body {
 }
 
 select,
-button {
+button,
+input[type="text"],
+input[type="password"] {
   background: #1f242c;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 0.85rem;
+}
+
+select,
+button {
   cursor: pointer;
 }
 
 button:hover,
-select:hover {
+select:hover,
+input:focus {
   border-color: var(--accent);
+  outline: none;
+}
+
+.user-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+button.danger {
+  color: #fff;
+  background: var(--err);
+  border-color: var(--err);
 }
 
 /* ---- 網格 ---- */
@@ -396,4 +415,176 @@ select:hover {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+}
+
+/* ---- 登入頁 ---- */
+.login-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 340px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-box h1 {
+  font-size: 1.2rem;
+  margin: 0;
+  text-align: center;
+}
+
+.login-sub {
+  margin: 0 0 4px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.login-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.login-box input {
+  width: 100%;
+}
+
+.login-box button {
+  margin-top: 6px;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  padding: 9px;
+  font-size: 0.95rem;
+}
+
+.login-err {
+  color: var(--err);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0;
+}
+
+/* ---- 管理頁 ---- */
+.admin {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.admin-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.admin-panel h2 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.chk {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  color: var(--text) !important;
+  font-size: 0.9rem;
+}
+
+.cam-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 12px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.admin-form button {
+  align-self: flex-start;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  padding: 8px 20px;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--bg);
+}
+
+.user-head {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 6px;
+}
+
+.user-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.pass-input {
+  flex: 1;
+  min-width: 160px;
 }

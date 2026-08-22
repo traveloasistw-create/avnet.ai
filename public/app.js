@@ -10,12 +10,37 @@ const players = new Map(); // id -> { hls, video, tile }
 async function fetchCameras() {
   try {
     const res = await fetch('/api/cameras');
+    if (res.status === 401) {
+      window.location.href = '/login.html';
+      return [];
+    }
     if (!res.ok) throw new Error(res.statusText);
     return await res.json();
   } catch (err) {
     console.error('無法取得攝影機清單', err);
     return [];
   }
+}
+
+// 顯示登入者、管理員才看得到「管理」分頁、綁定登出
+async function setupUserBar() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.status === 401) {
+      window.location.href = '/login.html';
+      return;
+    }
+    const me = await res.json();
+    const label = document.getElementById('userLabel');
+    if (label) label.textContent = `👤 ${me.username}`;
+    if (me.isAdmin) document.getElementById('adminTab')?.classList.remove('hidden');
+  } catch {
+    /* 忽略 */
+  }
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
 }
 
 function createTile(cam) {
@@ -181,6 +206,7 @@ function attachStream(cam, video, tile) {
 }
 
 async function init() {
+  await setupUserBar();
   const cameras = await fetchCameras();
   if (cameras.length === 0) {
     grid.classList.add('hidden');

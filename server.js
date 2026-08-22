@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieSession from 'cookie-session';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,18 +12,28 @@ import {
   loadConfig,
 } from './lib/config.js';
 import { CameraManager } from './lib/cameras.js';
+import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
 import {
-  listDates,
-  listRecordings,
-  startCleanupJob,
-} from './lib/recordings.js';
+  ensureAdmin,
+  getSessionSecret,
+  requireLogin,
+  requireAdmin,
+  currentUser,
+  findUser,
+  loadUsers,
+  saveUsers,
+  hashPassword,
+  verifyPassword,
+  allowedCameraIds,
+  canAccess,
+} from './lib/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC = path.join(__dirname, 'public');
 
 // ---- 載入設定並啟動串流 ----------------------------------------------------
 const { recording, cameras } = loadConfig();
 
-// 開機時清掉舊的即時串流暫存（錄影檔保留）
 fs.rmSync(STREAMS_DIR, { recursive: true, force: true });
 fs.mkdirSync(STREAMS_DIR, { recursive: true });
 fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
@@ -33,6 +44,8 @@ if (cameras.length === 0) {
   );
 }
 
+ensureAdmin(); // 第一次啟動建立預設管理員
+
 const manager = new CameraManager(recording);
 cameras.forEach((c) => manager.start(c));
 
@@ -40,72 +53,178 @@ const cleanupTimer = recording.enabled
   ? startCleanupJob(recording.retentionDays)
   : null;
 
+// 依 id 快速查攝影機
+const cameraById = new Map(cameras.map((c) => [c.id, c]));
+
 // ---- Web 伺服器 ----------------------------------------------------------
 const app = express();
+app.use(express.json());
+app.use(
+  cookieSession({
+    name: 'camwall',
+    keys: [getSessionSecret()],
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天
+    httpOnly: true,
+    sameSite: 'lax',
+  })
+);
 
-app.use(express.static(path.join(__dirname, 'public')));
+// ---- 免登入即可存取的資源（登入頁本身、樣式、播放器函式庫） ----
+app.get(['/login.html', '/login.js'], (req, res) =>
+  res.sendFile(path.join(PUBLIC, path.basename(req.path)))
+);
+app.use('/style.css', express.static(path.join(PUBLIC, 'style.css')));
 app.use(
   '/vendor/hls.js',
   express.static(path.join(__dirname, 'node_modules', 'hls.js', 'dist'))
 );
-app.use('/streams', express.static(STREAMS_DIR));
-// 錄影檔（express 靜態服務自動支援 Range，方便拖曳快轉與下載）
-app.use('/recordings', express.static(RECORDINGS_DIR));
 
-// 攝影機清單 + 即時狀態
+// ---- 登入 / 登出 / 我是誰 ----
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const user = findUser(username);
+  if (!user || !verifyPassword(password || '', user.password)) {
+    return res.status(401).json({ error: '帳號或密碼錯誤' });
+  }
+  req.session.username = user.username;
+  res.json({ ok: true });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session = null;
+  res.json({ ok: true });
+});
+
+app.get('/api/me', requireLogin, (req, res) => {
+  const user = currentUser(req);
+  res.json({ username: user.username, isAdmin: !!user.isAdmin });
+});
+
+// ---- 此行以下全部需要登入 ----
+app.use(requireLogin);
+
+// 管理頁（需要管理員）
+app.get('/admin.html', requireAdmin, (req, res) =>
+  res.sendFile(path.join(PUBLIC, 'admin.html'))
+);
+
+// 攝影機清單：只回傳這位使用者被授權的
 app.get('/api/cameras', (req, res) => {
+  const user = currentUser(req);
+  const allowed = new Set(allowedCameraIds(user, cameras));
   res.json(
-    cameras.map((c) => ({
-      id: c.id,
-      name: c.name,
-      status: manager.status(c.id),
-      record: recording.enabled && c.record !== false,
-      src: `/streams/${c.id}/index.m3u8`,
-    }))
+    cameras
+      .filter((c) => allowed.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: manager.status(c.id),
+        record: recording.enabled && c.record !== false,
+        src: `/streams/${c.id}/index.m3u8`,
+      }))
   );
 });
 
-// 錄影設定資訊
-app.get('/api/recording-info', (req, res) => {
-  res.json(recording);
-});
+app.get('/api/recording-info', (req, res) => res.json(recording));
 
-// 某台攝影機有錄影的日期
-app.get('/api/recordings/:id/dates', (req, res) => {
-  res.json(listDates(req.params.id));
-});
+// 每台攝影機資源的授權檢查
+function guardCamera(req, res, next) {
+  const id = req.params.id || String(req.path).split('/').filter(Boolean)[0];
+  if (!canAccess(currentUser(req), id)) {
+    return res.status(403).json({ error: '沒有這支攝影機的權限' });
+  }
+  next();
+}
 
-// 某台攝影機某日的所有片段
-app.get('/api/recordings/:id', (req, res) => {
-  const date = req.query.date; // YYYY-MM-DD
-  res.json(listRecordings(req.params.id, date));
-});
+app.get('/api/recordings/:id/dates', guardCamera, (req, res) =>
+  res.json(listDates(req.params.id))
+);
+app.get('/api/recordings/:id', guardCamera, (req, res) =>
+  res.json(listRecordings(req.params.id, req.query.date))
+);
 
-// 即時快照：從 HLS 擷取一張畫面
-app.get('/api/snapshot/:id', (req, res) => {
+// 即時快照
+app.get('/api/snapshot/:id', guardCamera, (req, res) => {
   const id = path.basename(req.params.id);
   const playlist = path.join(STREAMS_DIR, id, 'index.m3u8');
-  if (!fs.existsSync(playlist)) {
-    return res.status(503).send('串流尚未就緒');
-  }
+  if (!fs.existsSync(playlist)) return res.status(503).send('串流尚未就緒');
   const ff = spawn(FFMPEG, [
-    '-nostdin',
-    '-loglevel', 'error',
+    '-nostdin', '-loglevel', 'error',
     '-i', playlist,
-    '-frames:v', '1',
-    '-q:v', '3',
-    '-f', 'image2',
-    'pipe:1',
+    '-frames:v', '1', '-q:v', '3', '-f', 'image2', 'pipe:1',
   ]);
   res.setHeader('Content-Type', 'image/jpeg');
   ff.stdout.pipe(res);
   ff.on('error', () => {
     if (!res.headersSent) res.status(500).end();
   });
-  // 逾時保護
   const killer = setTimeout(() => ff.kill('SIGKILL'), 8000);
   ff.on('exit', () => clearTimeout(killer));
 });
+
+// 串流檔與錄影檔：先過授權檢查，再交給靜態服務
+app.use('/streams', guardCamera, express.static(STREAMS_DIR));
+app.use('/recordings', guardCamera, express.static(RECORDINGS_DIR));
+
+// ---- 管理員 API ----
+app.get('/api/admin/cameras', requireAdmin, (req, res) =>
+  res.json(cameras.map((c) => ({ id: c.id, name: c.name })))
+);
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  res.json(
+    loadUsers().map((u) => ({
+      username: u.username,
+      isAdmin: !!u.isAdmin,
+      cameras: u.cameras === '*' ? '*' : u.cameras || [],
+    }))
+  );
+});
+
+app.post('/api/admin/users', requireAdmin, (req, res) => {
+  const { username, password, isAdmin, cameras: cams } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: '帳號與密碼為必填' });
+  }
+  const users = loadUsers();
+  if (users.some((u) => u.username === username)) {
+    return res.status(409).json({ error: '帳號已存在' });
+  }
+  users.push({
+    username,
+    password: hashPassword(password),
+    isAdmin: !!isAdmin,
+    cameras: isAdmin ? '*' : Array.isArray(cams) ? cams : [],
+  });
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
+app.put('/api/admin/users/:username', requireAdmin, (req, res) => {
+  const { password, isAdmin, cameras: cams } = req.body || {};
+  const users = loadUsers();
+  const u = users.find((x) => x.username === req.params.username);
+  if (!u) return res.status(404).json({ error: '找不到使用者' });
+  if (password) u.password = hashPassword(password);
+  if (typeof isAdmin === 'boolean') u.isAdmin = isAdmin;
+  if (u.isAdmin) u.cameras = '*';
+  else if (Array.isArray(cams)) u.cameras = cams;
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
+  const me = currentUser(req);
+  if (me.username === req.params.username) {
+    return res.status(400).json({ error: '不能刪除自己' });
+  }
+  const users = loadUsers().filter((u) => u.username !== req.params.username);
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
+// ---- 其餘前端頁面（需登入） ----
+app.use(express.static(PUBLIC));
 
 const server = app.listen(PORT, () => {
   console.log(`\n📷 監視器看板已啟動： http://localhost:${PORT}`);
