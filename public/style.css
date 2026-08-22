@@ -183,6 +183,16 @@ select:hover {
   font-size: 0.85rem;
 }
 
+.tile-btn.recording {
+  background: var(--err);
+  color: #fff;
+}
+
+/* 錄影中的按鈕要一直看得到（不因滑鼠移開而隱藏） */
+.tile-actions:has(.recording) {
+  opacity: 1;
+}
+
 .dot {
   width: 8px;
   height: 8px;

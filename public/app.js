@@ -44,6 +44,59 @@ function createTile(cam) {
     window.open(`/api/snapshot/${encodeURIComponent(cam.id)}`, '_blank');
   });
 
+  // 當下錄影，直接存到「你正在用的這台電腦」
+  const recBtn = document.createElement('button');
+  recBtn.className = 'tile-btn';
+  recBtn.textContent = '⏺';
+  recBtn.title = '錄影到我的電腦';
+  let recorder = null;
+  let chunks = [];
+  recBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (recorder && recorder.state === 'recording') {
+      recorder.stop();
+      return;
+    }
+    let stream;
+    try {
+      stream = video.captureStream
+        ? video.captureStream()
+        : video.mozCaptureStream?.();
+    } catch {
+      stream = null;
+    }
+    if (!stream) {
+      alert('無法擷取畫面，請等畫面開始播放後再試（建議用 Chrome 瀏覽器）。');
+      return;
+    }
+    chunks = [];
+    try {
+      recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    } catch {
+      recorder = new MediaRecorder(stream);
+    }
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size) chunks.push(ev.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `${cam.id}_${ts}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      recBtn.classList.remove('recording');
+      recBtn.textContent = '⏺';
+      recBtn.title = '錄影到我的電腦';
+    };
+    recorder.start();
+    recBtn.classList.add('recording');
+    recBtn.textContent = '⏹';
+    recBtn.title = '停止並存檔';
+  });
+
   const expand = document.createElement('button');
   expand.className = 'tile-btn';
   expand.textContent = '⛶';
@@ -53,7 +106,7 @@ function createTile(cam) {
     tile.classList.toggle('zoomed');
   });
 
-  actions.append(snapBtn, expand);
+  actions.append(snapBtn, recBtn, expand);
 
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
