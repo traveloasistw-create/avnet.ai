@@ -13,6 +13,7 @@ import {
 } from './lib/config.js';
 import { CameraManager } from './lib/cameras.js';
 import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
+import { move as ptzMove, stop as ptzStop } from './lib/ptz.js';
 import {
   ensureAdmin,
   getSessionSecret,
@@ -60,6 +61,14 @@ function newCameraId() {
     id = 'cam_' + Math.random().toString(36).slice(2, 8);
   } while (manager.get(id));
   return id;
+}
+
+// 由主串流網址推導子串流網址（喬安：結尾 _0 → _1），推不出來回傳 null
+function deriveSub(url) {
+  if (typeof url === 'string' && /_0(?=$|\?)/.test(url)) {
+    return url.replace(/_0(?=$|\?)/, '_1');
+  }
+  return null;
 }
 
 // ---- Web 伺服器 ----------------------------------------------------------
@@ -127,6 +136,8 @@ app.get('/api/cameras', (req, res) => {
         name: c.name,
         status: manager.status(c.id),
         record: recording.enabled && c.record !== false,
+        hasSub: !!(c.subUrl || deriveSub(c.url)), // 有子串流才顯示畫質切換
+        quality: c.useSub ? 'sub' : 'main',
         src: `/streams/${c.id}/index.m3u8`,
       }))
   );
@@ -142,6 +153,32 @@ function guardCamera(req, res, next) {
   }
   next();
 }
+
+// 畫質切換：主串流(超清) <-> 子串流(標清)
+app.post('/api/cameras/:id/quality', guardCamera, (req, res) => {
+  const cam = manager.get(req.params.id);
+  if (!cam) return res.status(404).json({ error: '找不到攝影機' });
+  const subUrl = cam.subUrl || deriveSub(cam.url);
+  if (!subUrl) return res.status(400).json({ error: '這支沒有子串流' });
+  const useSub = req.body && req.body.sub === true;
+  // 一併把推導出的子串流網址存起來，之後不必再推
+  manager.update(cam.id, { subUrl, useSub });
+  res.json({ ok: true, quality: useSub ? 'sub' : 'main' });
+});
+
+// 畫面移動（PTZ）：轉動支援 ONVIF 的相機；不支援的相機會回錯誤（前端忽略）
+app.post('/api/ptz/:id', guardCamera, async (req, res) => {
+  const cam = manager.get(req.params.id);
+  if (!cam) return res.status(404).json({ error: '找不到攝影機' });
+  const action = req.body && req.body.action;
+  try {
+    if (action === 'stop') await ptzStop(cam);
+    else await ptzMove(cam, action);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'PTZ 失敗' });
+  }
+});
 
 app.get('/api/recordings/:id/dates', guardCamera, (req, res) =>
   res.json(listDates(req.params.id))
@@ -198,6 +235,7 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
       id: newCameraId(),
       name,
       url,
+      subUrl: deriveSub(url) || undefined,
       enabled: enabled !== false,
       record: record !== false,
     });

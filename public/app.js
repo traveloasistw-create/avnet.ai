@@ -2,7 +2,7 @@
 
 const grid = document.getElementById('grid');
 const emptyEl = document.getElementById('empty');
-const colsSelect = document.getElementById('colsSelect');
+const layoutSelect = document.getElementById('layoutSelect');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 
 const players = new Map(); // id -> { hls, video, tile }
@@ -185,6 +185,40 @@ function createTile(cam) {
     tile.classList.toggle('zoomed');
   });
 
+  // 畫質切換：超清(主串流) <-> 標清(子串流)
+  let curQuality = cam.quality || 'main';
+  const qualBtn = document.createElement('button');
+  qualBtn.className = 'tile-btn qual-btn';
+  qualBtn.textContent = curQuality === 'sub' ? '標清' : '超清';
+  qualBtn.title = '切換畫質';
+  if (!cam.hasSub) qualBtn.style.display = 'none';
+  qualBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const toSub = curQuality !== 'sub';
+    qualBtn.disabled = true;
+    qualBtn.textContent = '…';
+    try {
+      const res = await fetch(
+        `/api/cameras/${encodeURIComponent(cam.id)}/quality`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sub: toSub }),
+        }
+      );
+      if (res.ok) {
+        const d = await res.json();
+        curQuality = d.quality;
+        showState(tile, '切換畫質中…');
+        setTimeout(() => reattach(cam.id), 2500);
+      }
+    } catch {
+      /* 忽略 */
+    }
+    qualBtn.textContent = curQuality === 'sub' ? '標清' : '超清';
+    qualBtn.disabled = false;
+  });
+
   // 拖曳把手：可拖動這一格來排列位置
   const drag = document.createElement('button');
   drag.className = 'tile-btn drag-handle';
@@ -218,12 +252,36 @@ function createTile(cam) {
     grid.insertBefore(draggedTile, before ? tile : tile.nextSibling);
   });
 
-  actions.append(drag, snapBtn, pauseBtn, recBtn, expand);
+  actions.append(drag, snapBtn, qualBtn, pauseBtn, recBtn, expand);
+
+  // 畫面移動（PTZ）控制盤：放大檢視時才出現
+  const ptz = document.createElement('div');
+  ptz.className = 'ptz';
+  ptz.innerHTML = `
+    <button data-a="up" title="上">▲</button>
+    <div class="ptz-mid">
+      <button data-a="left" title="左">◀</button>
+      <button data-a="zoomin" title="放大">＋</button>
+      <button data-a="zoomout" title="縮小">－</button>
+      <button data-a="right" title="右">▶</button>
+    </div>
+    <button data-a="down" title="下">▼</button>
+  `;
+  ptz.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    e.stopPropagation();
+    fetch(`/api/ptz/${encodeURIComponent(cam.id)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: b.dataset.a }),
+    }).catch(() => {});
+  });
 
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
 
-  tile.append(video, label, actions);
+  tile.append(video, label, actions, ptz);
   grid.appendChild(tile);
 
   attachStream(cam, video, tile);
@@ -242,6 +300,21 @@ function showState(tile, msg) {
 
 function clearState(tile) {
   tile.querySelector('.state-msg')?.remove();
+}
+
+// 重新連線某台的串流（畫質切換後，等 server 重啟串流再重載）
+function reattach(id) {
+  const rec = players.get(id);
+  if (!rec) return;
+  if (rec.hls) {
+    try {
+      rec.hls.destroy();
+    } catch {
+      /* 忽略 */
+    }
+    rec.hls = null;
+  }
+  attachStream({ id, src: `/streams/${id}/index.m3u8` }, rec.video, rec.tile);
 }
 
 function attachStream(cam, video, tile) {
@@ -301,6 +374,7 @@ async function init() {
     return;
   }
   applySavedOrder(cameras).forEach(createTile);
+  restoreLayout();
   pollStatus();
 }
 
@@ -317,12 +391,59 @@ async function pollStatus() {
   }, 5000);
 }
 
-// ---- 控制項 ----
-colsSelect.addEventListener('change', () => {
-  const v = colsSelect.value;
-  if (v === 'auto') grid.removeAttribute('data-cols');
-  else grid.dataset.cols = v;
-});
+// ---- 版面切換 ----
+const LAYOUT_KEY = 'camwall.layout';
+let seqTimer = null;
+let seqIndex = 0;
+const SEQ_SIZE = 4; // 輪播一次顯示幾格
+const SEQ_INTERVAL = 10000; // 每 10 秒換一批
+
+function showSeqBatch() {
+  const tiles = [...grid.querySelectorAll('.tile')];
+  if (tiles.length === 0) return;
+  tiles.forEach((t) => t.classList.remove('seq-on'));
+  const n = Math.min(SEQ_SIZE, tiles.length);
+  for (let i = 0; i < n; i++) {
+    tiles[(seqIndex + i) % tiles.length].classList.add('seq-on');
+  }
+  seqIndex = (seqIndex + n) % tiles.length;
+}
+function startSequence() {
+  stopSequence();
+  seqIndex = 0;
+  showSeqBatch();
+  seqTimer = setInterval(showSeqBatch, SEQ_INTERVAL);
+}
+function stopSequence() {
+  if (seqTimer) clearInterval(seqTimer);
+  seqTimer = null;
+  grid.querySelectorAll('.seq-on').forEach((t) => t.classList.remove('seq-on'));
+}
+
+function applyLayout(name) {
+  grid.dataset.layout = name;
+  try {
+    localStorage.setItem(LAYOUT_KEY, name);
+  } catch {
+    /* 忽略 */
+  }
+  if (name === 'sequence') startSequence();
+  else stopSequence();
+}
+
+layoutSelect.addEventListener('change', () => applyLayout(layoutSelect.value));
+
+// 套用上次選的版面
+function restoreLayout() {
+  let name = 'auto';
+  try {
+    name = localStorage.getItem(LAYOUT_KEY) || 'auto';
+  } catch {
+    /* 忽略 */
+  }
+  layoutSelect.value = name;
+  applyLayout(name);
+}
 
 fullscreenBtn.addEventListener('click', () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();

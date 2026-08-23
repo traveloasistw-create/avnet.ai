@@ -135,17 +135,64 @@ button.danger {
   align-content: start;
 }
 
-.grid[data-cols="1"] {
-  grid-template-columns: 1fr;
-}
-.grid[data-cols="2"] {
+/* ---- 版面 ---- */
+.grid[data-layout="cols-2"] {
   grid-template-columns: repeat(2, 1fr);
 }
-.grid[data-cols="3"] {
+.grid[data-layout="cols-3"] {
   grid-template-columns: repeat(3, 1fr);
 }
-.grid[data-cols="4"] {
+.grid[data-layout="cols-4"] {
   grid-template-columns: repeat(4, 1fr);
+}
+
+/* 聚焦：第一格放大成 2×2 */
+.grid[data-layout="spotlight"] {
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: minmax(150px, 1fr);
+}
+.grid[data-layout="spotlight"] .tile {
+  aspect-ratio: auto;
+  min-height: 150px;
+}
+.grid[data-layout="spotlight"] .tile:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+/* 重點 + 縮圖列：第一格滿版大，其餘小縮圖 */
+.grid[data-layout="film"] {
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: minmax(105px, 1fr);
+}
+.grid[data-layout="film"] .tile {
+  aspect-ratio: auto;
+  min-height: 105px;
+}
+.grid[data-layout="film"] .tile:first-child {
+  grid-column: 1 / -1;
+  grid-row: span 2;
+}
+
+/* 走廊直式：直立的畫面 */
+.grid[data-layout="corridor"] {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.grid[data-layout="corridor"] .tile {
+  aspect-ratio: 9 / 16;
+}
+
+/* 輪播：只顯示 seq-on 的格子 */
+.grid[data-layout="sequence"] {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
+}
+.grid[data-layout="sequence"] .tile {
+  aspect-ratio: auto;
+  display: none;
+}
+.grid[data-layout="sequence"] .tile.seq-on {
+  display: block;
 }
 
 /* ---- 單一攝影機卡片 ---- */
@@ -207,8 +254,50 @@ button.danger {
   color: #fff;
 }
 
+.qual-btn {
+  font-size: 0.72rem;
+  min-width: 34px;
+}
+
 .drag-handle {
   cursor: grab;
+}
+
+/* ---- PTZ 控制盤（放大檢視時顯示） ---- */
+.ptz {
+  display: none;
+}
+.tile.zoomed .ptz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.ptz .ptz-mid {
+  display: flex;
+  gap: 6px;
+}
+.ptz button {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1rem;
+  display: grid;
+  place-items: center;
+}
+.ptz button:hover {
+  background: var(--accent);
+}
+.ptz button:active {
+  transform: scale(0.92);
 }
 .drag-handle:active {
   cursor: grabbing;
