@@ -207,6 +207,19 @@ button.danger {
   color: #fff;
 }
 
+.drag-handle {
+  cursor: grab;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.tile.dragging {
+  opacity: 0.4;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
 /* 錄影中的按鈕要一直看得到（不因滑鼠移開而隱藏） */
 .tile-actions:has(.recording) {
   opacity: 1;

@@ -7,6 +7,39 @@ const fullscreenBtn = document.getElementById('fullscreenBtn');
 
 const players = new Map(); // id -> { hls, video, tile }
 
+let draggedTile = null; // 目前被拖曳的攝影機格
+const ORDER_KEY = 'camwall.order';
+
+// 儲存目前畫面上的排列順序（記在這台瀏覽器，下次打開位置不變）
+function saveOrder() {
+  try {
+    const ids = [...grid.querySelectorAll('.tile')].map((t) => t.dataset.id);
+    localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+  } catch {
+    /* 無法儲存就算了 */
+  }
+}
+
+// 依上次儲存的順序排列攝影機；新加入、沒記錄的排最後
+function applySavedOrder(cameras) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+    if (!Array.isArray(saved) || saved.length === 0) return cameras;
+    const byId = new Map(cameras.map((c) => [c.id, c]));
+    const ordered = [];
+    for (const id of saved) {
+      if (byId.has(id)) {
+        ordered.push(byId.get(id));
+        byId.delete(id);
+      }
+    }
+    for (const c of byId.values()) ordered.push(c);
+    return ordered;
+  } catch {
+    return cameras;
+  }
+}
+
 async function fetchCameras() {
   try {
     const res = await fetch('/api/cameras');
@@ -134,7 +167,40 @@ function createTile(cam) {
     tile.classList.toggle('zoomed');
   });
 
-  actions.append(snapBtn, recBtn, expand);
+  // 拖曳把手：可拖動這一格來排列位置
+  const drag = document.createElement('button');
+  drag.className = 'tile-btn drag-handle';
+  drag.textContent = '⠿';
+  drag.title = '拖曳排列位置';
+  drag.draggable = true;
+  drag.addEventListener('click', (e) => e.stopPropagation());
+  drag.addEventListener('dragstart', (e) => {
+    draggedTile = tile;
+    tile.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', cam.id);
+      e.dataTransfer.setDragImage(tile, 30, 20);
+    } catch {
+      /* 忽略 */
+    }
+  });
+  drag.addEventListener('dragend', () => {
+    tile.classList.remove('dragging');
+    draggedTile = null;
+    saveOrder();
+  });
+
+  // 拖曳經過這一格時，依左右半邊決定插在它前面或後面
+  tile.addEventListener('dragover', (e) => {
+    if (!draggedTile || tile === draggedTile) return;
+    e.preventDefault();
+    const box = tile.getBoundingClientRect();
+    const before = e.clientX < box.left + box.width / 2;
+    grid.insertBefore(draggedTile, before ? tile : tile.nextSibling);
+  });
+
+  actions.append(drag, snapBtn, recBtn, expand);
 
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
@@ -216,7 +282,7 @@ async function init() {
     emptyEl.classList.remove('hidden');
     return;
   }
-  cameras.forEach(createTile);
+  applySavedOrder(cameras).forEach(createTile);
   pollStatus();
 }
 
