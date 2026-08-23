@@ -105,6 +105,24 @@ function createTile(cam) {
     window.open(`/api/snapshot/${encodeURIComponent(cam.id)}`, '_blank');
   });
 
+  // 暫停 / 播放這一格的即時畫面
+  const pauseBtn = document.createElement('button');
+  pauseBtn.className = 'tile-btn';
+  pauseBtn.textContent = '⏸';
+  pauseBtn.title = '暫停';
+  pauseBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (video.paused) {
+      video.play().catch(() => {});
+      pauseBtn.textContent = '⏸';
+      pauseBtn.title = '暫停';
+    } else {
+      video.pause();
+      pauseBtn.textContent = '▶';
+      pauseBtn.title = '播放';
+    }
+  });
+
   // 當下錄影，直接存到「你正在用的這台電腦」
   const recBtn = document.createElement('button');
   recBtn.className = 'tile-btn';
@@ -200,7 +218,7 @@ function createTile(cam) {
     grid.insertBefore(draggedTile, before ? tile : tile.nextSibling);
   });
 
-  actions.append(drag, snapBtn, recBtn, expand);
+  actions.append(drag, snapBtn, pauseBtn, recBtn, expand);
 
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
