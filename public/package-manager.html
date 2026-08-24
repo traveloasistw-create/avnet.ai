@@ -45,12 +45,10 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            display: flex;
-            gap: 5px;
         }
 
-        .lang-btn {
-            padding: 8px 16px;
+        #languageSelect {
+            padding: 8px 12px;
             border: 2px solid white;
             background: rgba(255, 255, 255, 0.2);
             color: white;
@@ -61,14 +59,13 @@
             font-size: 0.9em;
         }
 
-        .lang-btn:hover {
+        #languageSelect:hover {
             background: rgba(255, 255, 255, 0.3);
         }
 
-        .lang-btn.active {
-            background: white;
-            color: #667eea;
-            border-color: white;
+        #languageSelect option {
+            background: #667eea;
+            color: white;
         }
 
         .tabs {
@@ -496,8 +493,11 @@
 </head>
 <body>
     <div class="language-switch">
-        <button class="lang-btn active" onclick="setLanguage('zh-TW')">繁體中文</button>
-        <button class="lang-btn" onclick="setLanguage('en')">English</button>
+        <select id="languageSelect" onchange="setLanguage(this.value)">
+            <option value="zh-TW">繁體中文</option>
+            <option value="en">English</option>
+            <option value="id">Bahasa Indonesia</option>
+        </select>
     </div>
 
     <div class="container">
@@ -758,19 +758,78 @@
                 clearSuccess: '✓ All data cleared',
                 recordedMsg: '✓ Recorded',
                 pleaseInput: 'Please scan or enter tracking number'
+            },
+            'id': {
+                title: '📦 Sistem Manajemen Paket',
+                subtitle: 'Pemindaian QR + Pencarian Anomali | Desktop & Seluler',
+                scanTab: '📥 Sistem Pemindai',
+                lookupTab: '🔍 Sistem Pencarian',
+                scanInput: '🔍 Input Pindai',
+                scanTip: '💡 Pindai kode QR → Catat otomatis nomor pelacakan dan waktu',
+                trackingLabel: 'Nomor Pelacakan',
+                trackingPlaceholder: 'mis: tw2627552652668z',
+                statusLabel: 'Status Pengemasan',
+                statusSelect: '-- Pilih Status --',
+                statusStart: '📍 Mulai Pengemasan',
+                statusComplete: '✓ Pengemasan Selesai',
+                btnStart: 'Mulai (F1)',
+                btnComplete: 'Selesai (F2)',
+                totalRecords: 'Total Pindai',
+                pairsCount: 'Pasangan Selesai',
+                exportBtn: '📥 Ekspor Excel',
+                clearBtn: '🗑️ Hapus Semua Data',
+                quickStats: '📊 Statistik Cepat',
+                todayData: '📈 Data Hari Ini',
+                started: 'Dimulai',
+                completed: 'Selesai',
+                avgDuration: 'Durasi Rata-rata',
+                maxDuration: 'Durasi Maksimal',
+                minDuration: 'Durasi Minimal',
+                shortcuts: '⚡ Pintasan',
+                recordsTable: '📋 Catatan Pindai',
+                recordCount: 'Total',
+                recordsCount: 'catatan',
+                emptyRecords: '📭 Belum ada catatan pindai',
+                waybillCol: 'Nomor Pelacakan',
+                statusCol: 'Status',
+                timeCol: 'Waktu',
+                actionCol: 'Tindakan',
+                statusStartCol: 'Dimulai',
+                statusCompleteCol: 'Selesai',
+                deleteBtn: 'Hapus',
+                queryTitle: '🔍 Pencarian Paket',
+                queryTip: '💡 Masukkan nomor pelacakan untuk melihat semua waktu pindai paket ini',
+                searchBtn: 'Cari',
+                inputError: '❌ Silakan masukkan nomor pelacakan',
+                notFound: '🔍',
+                notFoundMsg: 'Paket tidak ditemukan',
+                notFoundTip: 'Silakan verifikasi nomor pelacakan',
+                dateField: '📅 Tanggal',
+                startTimeField: '⏱️ Waktu Mulai',
+                completeTimeField: '✓ Waktu Selesai',
+                durationField: '⏳ Durasi',
+                onGoing: 'Sedang Berlangsung',
+                multipleRecords: '⚠️ Ditemukan',
+                multipleRecordsTip: 'catatan (mungkin duplikat atau masalah)',
+                recordNum: 'Catatan',
+                confirmDelete: 'Apakah Anda yakin ingin menghapus catatan ini?',
+                exportSuccess: '✓ Diekspor',
+                exportError: 'Tidak ada pasangan yang selesai untuk diekspor',
+                exportNotice: 'catatan',
+                confirmClear: '⚠️ Apakah Anda yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan!',
+                confirmClear2: 'Konfirmasi lagi? Semua catatan pindai akan dihapus!',
+                clearSuccess: '✓ Semua data dihapus',
+                recordedMsg: '✓ Tercatat',
+                pleaseInput: 'Silakan pindai atau masukkan nomor pelacakan'
             }
         };
 
         function setLanguage(lang) {
             currentLanguage = lang;
             localStorage.setItem('appLanguage', lang);
+            document.getElementById('languageSelect').value = lang;
             updatePageLanguage();
             updatePlaceholders();
-
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
         }
 
         function t(key) {
@@ -855,6 +914,10 @@
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 return `${monthNames[date.getMonth()]} ${day} (${dayNames[date.getDay()]})`;
+            } else if (currentLanguage === 'id') {
+                const bulanNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                const hariNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                return `${day} ${bulanNames[date.getMonth()]} (${hariNames[date.getDay()]})`;
             } else {
                 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
                 const weekDay = weekDays[date.getDay()];
@@ -867,6 +930,8 @@
             const secs = Math.floor(seconds % 60);
             if (currentLanguage === 'en') {
                 return `${minutes}m ${secs}s`;
+            } else if (currentLanguage === 'id') {
+                return `${minutes}m ${secs}d`;
             } else {
                 return `${minutes}分${secs}秒`;
             }
@@ -1014,9 +1079,14 @@
                 return;
             }
 
-            const headerRow = currentLanguage === 'en'
-                ? ['Tracking #', 'Start Time', 'Complete Time', 'Duration (Min:Sec)', 'Duration (Sec)']
-                : ['寄件編號', '開始時間', '完成時間', '耗時(分秒)', '耗時(秒)'];
+            let headerRow;
+            if (currentLanguage === 'en') {
+                headerRow = ['Tracking #', 'Start Time', 'Complete Time', 'Duration (Min:Sec)', 'Duration (Sec)'];
+            } else if (currentLanguage === 'id') {
+                headerRow = ['Nomor Pelacakan', 'Waktu Mulai', 'Waktu Selesai', 'Durasi (Menit:Detik)', 'Durasi (Detik)'];
+            } else {
+                headerRow = ['寄件編號', '開始時間', '完成時間', '耗時(分秒)', '耗時(秒)'];
+            }
 
             const data = [
                 headerRow,
@@ -1031,7 +1101,14 @@
 
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            const sheetName = currentLanguage === 'en' ? 'Packing Records' : '包貨記錄';
+            let sheetName;
+            if (currentLanguage === 'en') {
+                sheetName = 'Packing Records';
+            } else if (currentLanguage === 'id') {
+                sheetName = 'Catatan Pengemasan';
+            } else {
+                sheetName = '包貨記錄';
+            }
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
             ws['!cols'] = [
@@ -1042,9 +1119,14 @@
                 { wch: 10 }
             ];
 
-            const fileName = currentLanguage === 'en'
-                ? `packing_records_${new Date().toISOString().split('T')[0]}.xlsx`
-                : `包貨記錄_${new Date().toISOString().split('T')[0]}.xlsx`;
+            let fileName;
+            if (currentLanguage === 'en') {
+                fileName = `packing_records_${new Date().toISOString().split('T')[0]}.xlsx`;
+            } else if (currentLanguage === 'id') {
+                fileName = `catatan_pengemasan_${new Date().toISOString().split('T')[0]}.xlsx`;
+            } else {
+                fileName = `包貨記錄_${new Date().toISOString().split('T')[0]}.xlsx`;
+            }
             XLSX.writeFile(wb, fileName);
 
             showSuccessMessage(`${t('exportSuccess')} ${pairs.length} ${t('exportNotice')}`);
@@ -1189,15 +1271,7 @@
         function initLanguage() {
             const savedLang = localStorage.getItem('appLanguage') || 'zh-TW';
             currentLanguage = savedLang;
-
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if ((savedLang === 'zh-TW' && btn.textContent.includes('繁體')) ||
-                    (savedLang === 'en' && btn.textContent === 'English')) {
-                    btn.classList.add('active');
-                }
-            });
-
+            document.getElementById('languageSelect').value = savedLang;
             updatePageLanguage();
             updatePlaceholders();
         }
