@@ -127,6 +127,16 @@ input:focus {
   border-radius: 20px;
 }
 
+.online-count-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  background: #1f242c;
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
 .tile.offline {
   outline: 2px solid var(--err);
   outline-offset: -2px;

@@ -69,6 +69,7 @@ async function setupUserBar() {
     if (me.isAdmin) {
       document.getElementById('adminTab')?.classList.remove('hidden');
       document.getElementById('camMgmtTab')?.classList.remove('hidden');
+      startOnlineCount(); // 管理員才顯示目前上線人數
     }
     // 中央錄影關閉時，隱藏「回放」分頁
     const info = await fetch('/api/recording-info').then((r) => r.json());
@@ -80,6 +81,25 @@ async function setupUserBar() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login.html';
   });
+}
+
+// 目前上線人數（僅管理員可見，含管理員自己，每 5 秒更新）
+function startOnlineCount() {
+  const badge = document.getElementById('onlineCountBadge');
+  if (!badge) return;
+  async function update() {
+    try {
+      const res = await fetch('/api/admin/online');
+      if (!res.ok) return;
+      const data = await res.json();
+      badge.textContent = `🟢 線上 ${data.length} 人`;
+      badge.classList.remove('hidden');
+    } catch {
+      /* 忽略 */
+    }
+  }
+  update();
+  setInterval(update, 5000);
 }
 
 function createTile(cam) {
