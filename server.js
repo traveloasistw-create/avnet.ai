@@ -123,6 +123,9 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
+  if (req.session && req.session.username) {
+    logAction(req.session.username, '登出');
+  }
   req.session = null;
   res.json({ ok: true });
 });
@@ -135,9 +138,12 @@ app.get('/api/me', requireLogin, (req, res) => {
 // ---- 此行以下全部需要登入 ----
 app.use(requireLogin);
 
-// 管理頁（需要管理員）
+// 管理頁 / 攝影機管理頁（都需要管理員）
 app.get('/admin.html', requireAdmin, (req, res) =>
   res.sendFile(path.join(PUBLIC, 'admin.html'))
+);
+app.get('/cameras.html', requireAdmin, (req, res) =>
+  res.sendFile(path.join(PUBLIC, 'cameras.html'))
 );
 
 // 攝影機清單：只回傳這位使用者被授權且啟用中的

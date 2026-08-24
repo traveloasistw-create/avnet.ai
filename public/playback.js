@@ -22,8 +22,10 @@ async function setupUserBar() {
     const me = await getJSON('/api/me');
     const label = document.getElementById('userLabel');
     if (label) label.textContent = `👤 ${me.username}`;
-    if (me.isAdmin)
+    if (me.isAdmin) {
       document.getElementById('adminTab')?.classList.remove('hidden');
+      document.getElementById('camMgmtTab')?.classList.remove('hidden');
+    }
   } catch {
     /* 忽略 */
   }

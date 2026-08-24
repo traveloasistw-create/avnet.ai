@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>攝影機管理</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>📷 旅遊綠洲 監視器看板</h1>
+        <nav class="tabs">
+          <a href="/">即時</a>
+          <a href="/playback.html" id="playbackTab">回放</a>
+          <a href="/cameras.html" class="active">攝影機</a>
+          <a href="/admin.html" id="adminTab" class="hidden">管理</a>
+        </nav>
+      </div>
+      <div class="controls">
+        <span id="userLabel" class="user-label"></span>
+        <button id="logoutBtn">登出</button>
+      </div>
+    </header>
+
+    <main class="admin">
+      <section class="admin-panel">
+        <h2>新增攝影機</h2>
+        <form id="addCamForm" class="admin-form">
+          <label>名稱 <input id="camName" type="text" placeholder="例如：大門" required /></label>
+          <label>
+            RTSP 網址
+            <input id="camUrl" type="text" placeholder="rtsp://帳號:密碼@192.168.x.x:554/..." required />
+          </label>
+          <label class="chk" id="camRecordLabel"><input id="camRecord" type="checkbox" checked /> 同時錄影存檔</label>
+          <button type="submit">➕ 新增攝影機</button>
+          <p id="addCamErr" class="login-err hidden"></p>
+        </form>
+      </section>
+
+      <section class="admin-panel">
+        <h2>攝影機清單 <span id="camCount" class="count-badge">0</span></h2>
+        <div id="camList" class="user-list"></div>
+      </section>
+    </main>
+
+    <script src="/cameras.js"></script>
+  </body>
+</html>
