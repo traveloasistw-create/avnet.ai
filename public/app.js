@@ -378,15 +378,31 @@ async function init() {
   pollStatus();
 }
 
-// 定時更新每台攝影機的狀態燈號
+// 定時更新每台攝影機的狀態燈號 + 離線警示
 async function pollStatus() {
   setInterval(async () => {
     const cameras = await fetchCameras();
+    let offline = 0;
     for (const cam of cameras) {
       const rec = players.get(cam.id);
       if (!rec) continue;
       const dot = rec.tile.querySelector('.dot');
       if (dot) dot.className = `dot ${cam.status}`;
+      if (cam.status === 'error' || cam.status === 'stopped') {
+        offline++;
+        rec.tile.classList.add('offline');
+      } else {
+        rec.tile.classList.remove('offline');
+      }
+    }
+    const alertEl = document.getElementById('offlineAlert');
+    if (alertEl) {
+      if (offline > 0) {
+        alertEl.textContent = `⚠️ ${offline} 支離線`;
+        alertEl.classList.remove('hidden');
+      } else {
+        alertEl.classList.add('hidden');
+      }
     }
   }, 5000);
 }

@@ -118,6 +118,20 @@ input:focus {
   color: var(--muted);
 }
 
+.offline-alert {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--err);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.tile.offline {
+  outline: 2px solid var(--err);
+  outline-offset: -2px;
+}
+
 button.danger {
   color: #fff;
   background: var(--err);
@@ -676,6 +690,35 @@ button.danger {
 .online-cams {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.log-row {
+  display: flex;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.log-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.log-user {
+  font-weight: 700;
+  min-width: 60px;
+}
+.log-act {
+  color: var(--ink);
 }
 
 .user-list {

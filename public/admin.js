@@ -237,6 +237,7 @@ async function refresh() {
   await loadCameras();
   cameraCheckboxes(document.getElementById('newCams'), []);
   await loadUsers();
+  loadLogs();
 }
 
 // 目前在線的使用者與他們正在看的相機（每 5 秒更新）
@@ -272,6 +273,55 @@ async function loadOnline() {
   }
 }
 
+// 操作日誌
+function fmtWhen(ts) {
+  return new Date(ts).toLocaleString('zh-TW', { hour12: false });
+}
+async function loadLogs() {
+  let logs;
+  try {
+    logs = await getJSON('/api/admin/logs');
+  } catch {
+    return;
+  }
+  const el = document.getElementById('logList');
+  if (!logs.length) {
+    el.innerHTML = '<p class="user-note">尚無紀錄。</p>';
+    return;
+  }
+  el.innerHTML = '';
+  for (const l of logs) {
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML =
+      `<span class="log-time">${fmtWhen(l.t)}</span>` +
+      `<span class="log-user">${l.user}</span>` +
+      `<span class="log-act">${l.action}${l.detail ? '：' + l.detail : ''}</span>`;
+    el.appendChild(row);
+  }
+}
+
+// 主機硬碟空間
+function fmtGB(bytes) {
+  return (bytes / 1e9).toFixed(0) + ' GB';
+}
+async function loadDisk() {
+  let d;
+  try {
+    d = await getJSON('/api/admin/disk');
+  } catch {
+    return;
+  }
+  const el = document.getElementById('diskInfo');
+  if (!d.ok) {
+    el.textContent = '';
+    return;
+  }
+  const pctFree = Math.round((d.free / d.total) * 100);
+  const warn = pctFree < 10 ? '⚠️ 空間偏低！' : '';
+  el.textContent = `💾 主機硬碟：剩餘 ${fmtGB(d.free)} / 共 ${fmtGB(d.total)}（${pctFree}%）${warn}`;
+}
+
 async function init() {
   const me = await getJSON('/api/me');
   document.getElementById('userLabel').textContent = `👤 ${me.username}`;
@@ -283,6 +333,8 @@ async function init() {
   }
   await refresh();
   loadOnline();
+  loadDisk();
+  loadLogs();
   setInterval(loadOnline, 5000);
 }
 

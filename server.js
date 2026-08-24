@@ -14,6 +14,7 @@ import {
 import { CameraManager } from './lib/cameras.js';
 import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
 import { move as ptzMove, stop as ptzStop } from './lib/ptz.js';
+import { logAction, recentLogs } from './lib/audit.js';
 import {
   ensureAdmin,
   getSessionSecret,
@@ -117,6 +118,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: '帳號或密碼錯誤' });
   }
   req.session.username = user.username;
+  logAction(user.username, '登入');
   res.json({ ok: true });
 });
 
@@ -261,6 +263,7 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
       enabled: enabled !== false,
       record: record !== false,
     });
+    logAction(req.session.username, '新增攝影機', name);
     res.json({ ok: true, id: cam.id });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -276,13 +279,17 @@ app.put('/api/admin/cameras/:id', requireAdmin, (req, res) => {
   if (typeof record === 'boolean') patch.record = record;
   const ok = manager.update(req.params.id, patch);
   if (!ok) return res.status(404).json({ error: '找不到攝影機' });
+  logAction(req.session.username, '修改攝影機', patch.name || req.params.id);
   res.json({ ok: true });
 });
 
 app.delete('/api/admin/cameras/:id', requireAdmin, (req, res) => {
   const id = req.params.id;
+  const cam = manager.get(id);
+  const name = cam ? cam.name : id;
   const ok = manager.remove(id);
   if (!ok) return res.status(404).json({ error: '找不到攝影機' });
+  logAction(req.session.username, '刪除攝影機', name);
   // 一併從所有使用者的授權清單移除這支攝影機
   const users = loadUsers();
   let changed = false;
@@ -343,6 +350,7 @@ app.post('/api/admin/users', requireAdmin, (req, res) => {
     cameras: isAdmin ? '*' : Array.isArray(cams) ? cams : [],
   });
   saveUsers(users);
+  logAction(req.session.username, '新增帳號', username);
   res.json({ ok: true });
 });
 
@@ -356,6 +364,11 @@ app.put('/api/admin/users/:username', requireAdmin, (req, res) => {
   if (u.isAdmin) u.cameras = '*';
   else if (Array.isArray(cams)) u.cameras = cams;
   saveUsers(users);
+  logAction(
+    req.session.username,
+    password ? '重設密碼' : '修改帳號權限',
+    req.params.username
+  );
   res.json({ ok: true });
 });
 
@@ -366,7 +379,21 @@ app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
   }
   const users = loadUsers().filter((u) => u.username !== req.params.username);
   saveUsers(users);
+  logAction(req.session.username, '刪除帳號', req.params.username);
   res.json({ ok: true });
+});
+
+// 操作日誌（最近 100 筆）
+app.get('/api/admin/logs', requireAdmin, (req, res) => res.json(recentLogs(100)));
+
+// 主機硬碟空間
+app.get('/api/admin/disk', requireAdmin, (req, res) => {
+  fs.statfs(RECORDINGS_DIR, (err, s) => {
+    if (err) return res.json({ ok: false });
+    const total = s.blocks * s.bsize;
+    const free = s.bfree * s.bsize;
+    res.json({ ok: true, total, free, used: total - free });
+  });
 });
 
 // ---- 其餘前端頁面（需登入） ----
