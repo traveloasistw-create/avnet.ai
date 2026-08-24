@@ -40,6 +40,9 @@ function selectedCams(container) {
 
 async function loadUsers() {
   const users = await getJSON('/api/admin/users');
+  const subCount = users.filter((u) => !u.isAdmin).length;
+  document.getElementById('userCount').textContent =
+    `${users.length} 個（子帳號 ${subCount}）`;
   const list = document.getElementById('userList');
   list.innerHTML = '';
 
@@ -236,6 +239,39 @@ async function refresh() {
   await loadUsers();
 }
 
+// 目前在線的使用者與他們正在看的相機（每 5 秒更新）
+async function loadOnline() {
+  let data;
+  try {
+    data = await getJSON('/api/admin/online');
+  } catch {
+    return;
+  }
+  document.getElementById('onlineCount').textContent = data.length;
+  const el = document.getElementById('onlineList');
+  if (data.length === 0) {
+    el.innerHTML = '<p class="user-note">目前沒有人在線。</p>';
+    return;
+  }
+  el.innerHTML = '';
+  for (const u of data) {
+    const row = document.createElement('div');
+    row.className = 'online-row';
+    const cams = u.cameras.length
+      ? u.cameras.join('、')
+      : '（剛登入，尚未載入畫面）';
+    const dot = document.createElement('span');
+    dot.className = 'dot running';
+    const name = document.createElement('strong');
+    name.textContent = u.username;
+    const seeing = document.createElement('span');
+    seeing.className = 'online-cams';
+    seeing.textContent = '正在看：' + cams;
+    row.append(dot, name, seeing);
+    el.appendChild(row);
+  }
+}
+
 async function init() {
   const me = await getJSON('/api/me');
   document.getElementById('userLabel').textContent = `👤 ${me.username}`;
@@ -246,6 +282,8 @@ async function init() {
     document.getElementById('camRecordLabel')?.classList.add('hidden');
   }
   await refresh();
+  loadOnline();
+  setInterval(loadOnline, 5000);
 }
 
 // 新增帳號

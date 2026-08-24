@@ -24,6 +24,13 @@
 
     <main class="admin">
       <section class="admin-panel">
+        <h2>目前在線 <span id="onlineCount" class="count-badge">0</span></h2>
+        <div id="onlineList" class="online-list">
+          <p class="user-note">載入中…</p>
+        </div>
+      </section>
+
+      <section class="admin-panel">
         <h2>攝影機管理</h2>
         <form id="addCamForm" class="admin-form">
           <label>名稱 <input id="camName" type="text" placeholder="例如：大門" required /></label>
@@ -53,7 +60,7 @@
       </section>
 
       <section class="admin-panel">
-        <h2>現有帳號</h2>
+        <h2>現有帳號 <span id="userCount" class="count-badge">0</span></h2>
         <div id="userList" class="user-list"></div>
       </section>
     </main>

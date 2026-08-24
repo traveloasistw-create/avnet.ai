@@ -71,6 +71,21 @@ function deriveSub(url) {
   return null;
 }
 
+// ---- 在線狀態追蹤：誰在線上、正在看哪些相機 ----
+const presence = new Map(); // username -> { lastSeen, cameras: Map<id, ts> }
+const ONLINE_WINDOW_MS = 15000; // 15 秒內有活動就算在線
+
+function touch(username, cameraId) {
+  if (!username) return;
+  let p = presence.get(username);
+  if (!p) {
+    p = { lastSeen: 0, cameras: new Map() };
+    presence.set(username, p);
+  }
+  p.lastSeen = Date.now();
+  if (cameraId) p.cameras.set(cameraId, Date.now());
+}
+
 // ---- Web 伺服器 ----------------------------------------------------------
 const app = express();
 app.use(express.json());
@@ -125,6 +140,7 @@ app.get('/admin.html', requireAdmin, (req, res) =>
 
 // 攝影機清單：只回傳這位使用者被授權且啟用中的
 app.get('/api/cameras', (req, res) => {
+  touch(req.session.username); // 標記此使用者在線（心跳）
   const user = currentUser(req);
   const enabled = manager.enabled();
   const allowed = new Set(allowedCameraIds(user, enabled));
@@ -207,7 +223,13 @@ app.get('/api/snapshot/:id', guardCamera, (req, res) => {
 });
 
 // 串流檔與錄影檔：先過授權檢查，再交給靜態服務
-app.use('/streams', guardCamera, express.static(STREAMS_DIR));
+// 記錄「這位使用者正在看這支相機」（瀏覽器會持續抓該相機的串流片段）
+app.use('/streams', guardCamera, (req, res, next) => {
+  const id = String(req.path).split('/').filter(Boolean)[0];
+  touch(req.session.username, id);
+  next();
+});
+app.use('/streams', express.static(STREAMS_DIR));
 app.use('/recordings', guardCamera, express.static(RECORDINGS_DIR));
 
 // ---- 管理員 API：攝影機 ----
@@ -284,6 +306,25 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
       cameras: u.cameras === '*' ? '*' : u.cameras || [],
     }))
   );
+});
+
+// 目前在線的使用者，以及各自正在觀看哪些相機
+app.get('/api/admin/online', requireAdmin, (req, res) => {
+  const now = Date.now();
+  const online = [];
+  for (const [username, p] of presence) {
+    if (now - p.lastSeen > ONLINE_WINDOW_MS) continue;
+    const cams = [];
+    for (const [cid, ts] of p.cameras) {
+      if (now - ts <= ONLINE_WINDOW_MS) {
+        const cam = manager.get(cid);
+        cams.push(cam ? cam.name : cid);
+      }
+    }
+    online.push({ username, cameras: cams });
+  }
+  online.sort((a, b) => a.username.localeCompare(b.username));
+  res.json(online);
 });
 
 app.post('/api/admin/users', requireAdmin, (req, res) => {
