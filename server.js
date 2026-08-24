@@ -179,7 +179,7 @@ function guardCamera(req, res, next) {
 }
 
 // 畫質切換：主串流(超清) <-> 子串流(標清)
-app.post('/api/cameras/:id/quality', guardCamera, (req, res) => {
+app.post('/api/cameras/:id/quality', requireAdmin, (req, res) => {
   const cam = manager.get(req.params.id);
   if (!cam) return res.status(404).json({ error: '找不到攝影機' });
   const subUrl = cam.subUrl || deriveSub(cam.url);
@@ -191,7 +191,7 @@ app.post('/api/cameras/:id/quality', guardCamera, (req, res) => {
 });
 
 // 畫面移動（PTZ）：轉動支援 ONVIF 的相機；不支援的相機會回錯誤（前端忽略）
-app.post('/api/ptz/:id', guardCamera, async (req, res) => {
+app.post('/api/ptz/:id', requireAdmin, async (req, res) => {
   const cam = manager.get(req.params.id);
   if (!cam) return res.status(404).json({ error: '找不到攝影機' });
   const action = req.body && req.body.action;
@@ -212,7 +212,7 @@ app.get('/api/recordings/:id', guardCamera, (req, res) =>
 );
 
 // 即時快照
-app.get('/api/snapshot/:id', guardCamera, (req, res) => {
+app.get('/api/snapshot/:id', requireAdmin, (req, res) => {
   const id = path.basename(req.params.id);
   const playlist = path.join(STREAMS_DIR, id, 'index.m3u8');
   if (!fs.existsSync(playlist)) return res.status(503).send('串流尚未就緒');

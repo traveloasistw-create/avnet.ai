@@ -8,6 +8,7 @@ const fullscreenBtn = document.getElementById('fullscreenBtn');
 const players = new Map(); // id -> { hls, video, tile }
 
 let draggedTile = null; // 目前被拖曳的攝影機格
+let isAdmin = false; // 是否為主管理員（決定能否用截圖/錄影/畫質/轉動）
 const ORDER_KEY = 'camwall.order';
 
 // 儲存目前畫面上的排列順序（記在這台瀏覽器，下次打開位置不變）
@@ -64,6 +65,7 @@ async function setupUserBar() {
       return;
     }
     const me = await res.json();
+    isAdmin = !!me.isAdmin;
     const label = document.getElementById('userLabel');
     if (label) label.textContent = `👤 ${me.username}`;
     if (me.isAdmin) {
@@ -275,36 +277,46 @@ function createTile(cam) {
     grid.insertBefore(draggedTile, before ? tile : tile.nextSibling);
   });
 
-  actions.append(drag, snapBtn, qualBtn, pauseBtn, recBtn, expand);
-
-  // 畫面移動（PTZ）控制盤：放大檢視時才出現
-  const ptz = document.createElement('div');
-  ptz.className = 'ptz';
-  ptz.innerHTML = `
-    <button data-a="up" title="上">▲</button>
-    <div class="ptz-mid">
-      <button data-a="left" title="左">◀</button>
-      <button data-a="zoomin" title="放大">＋</button>
-      <button data-a="zoomout" title="縮小">－</button>
-      <button data-a="right" title="右">▶</button>
-    </div>
-    <button data-a="down" title="下">▼</button>
-  `;
-  ptz.addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    e.stopPropagation();
-    fetch(`/api/ptz/${encodeURIComponent(cam.id)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: b.dataset.a }),
-    }).catch(() => {});
-  });
+  // 一般帳號：只能拖移、暫停、放大；截圖/畫質/錄影/轉動僅主管理員
+  const btns = [drag];
+  if (isAdmin) btns.push(snapBtn, qualBtn);
+  btns.push(pauseBtn);
+  if (isAdmin) btns.push(recBtn);
+  btns.push(expand);
+  actions.append(...btns);
 
   // 點畫面也能切換放大
   tile.addEventListener('click', () => tile.classList.toggle('zoomed'));
 
-  tile.append(video, label, actions, ptz);
+  tile.append(video, label, actions);
+
+  // 畫面移動（PTZ）控制盤：僅主管理員，且放大檢視時才出現
+  if (isAdmin) {
+    const ptz = document.createElement('div');
+    ptz.className = 'ptz';
+    ptz.innerHTML = `
+      <button data-a="up" title="上">▲</button>
+      <div class="ptz-mid">
+        <button data-a="left" title="左">◀</button>
+        <button data-a="zoomin" title="放大">＋</button>
+        <button data-a="zoomout" title="縮小">－</button>
+        <button data-a="right" title="右">▶</button>
+      </div>
+      <button data-a="down" title="下">▼</button>
+    `;
+    ptz.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      e.stopPropagation();
+      fetch(`/api/ptz/${encodeURIComponent(cam.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: b.dataset.a }),
+      }).catch(() => {});
+    });
+    tile.append(ptz);
+  }
+
   grid.appendChild(tile);
 
   attachStream(cam, video, tile);
