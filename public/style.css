@@ -401,6 +401,23 @@ button.danger {
   display: none !important;
 }
 
+/* 一般帳號：禁止選取文字與拖曳存圖（管理員不套用） */
+body.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+body.no-select input,
+body.no-select textarea,
+body.no-select select {
+  -webkit-user-select: text;
+  user-select: text;
+}
+body.no-select img,
+body.no-select video {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 /* ---- 回放頁 ---- */
 .playback {
   flex: 1;
