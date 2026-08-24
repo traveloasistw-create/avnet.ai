@@ -41,6 +41,36 @@
             opacity: 0.9;
         }
 
+        .language-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: 2px solid white;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -457,111 +487,116 @@
             .tabs {
                 flex-direction: column;
             }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="language-switch">
+        <button class="lang-btn active" onclick="setLanguage('zh-TW')">繁體中文</button>
+        <button class="lang-btn" onclick="setLanguage('en')">English</button>
+    </div>
+
     <div class="container">
         <header>
-            <h1>📦 包货管理系统</h1>
-            <p>扫码输入 + 异常查询</p>
+            <h1 data-i18n="title">📦 包货管理系统</h1>
+            <p data-i18n="subtitle">扫码输入 + 异常查询 | 电脑 + 手机通用</p>
         </header>
 
-        <!-- 标签页 -->
         <div class="tabs">
-            <button class="tab-button active" onclick="switchTab('input')">
-                📥 扫码输入系统
+            <button class="tab-button active" onclick="switchTab('input')" data-i18n="scanTab">
+                📥 掃碼輸入系統
             </button>
-            <button class="tab-button" onclick="switchTab('lookup')">
-                🔍 异常查询系统
+            <button class="tab-button" onclick="switchTab('lookup')" data-i18n="lookupTab">
+                🔍 異常查詢系統
             </button>
         </div>
 
         <!-- 标签页1：扫码输入系统 -->
         <div id="input-tab" class="tab-content active">
             <div class="main-grid">
-                <!-- 左侧：输入区域 -->
                 <div class="card">
-                    <h2>🔍 扫码输入</h2>
+                    <h2 data-i18n="scanInput">🔍 掃碼輸入</h2>
 
-                    <div class="info-box">
-                        💡 扫码枪扫QR码 → 自动记录寄件号和时间
+                    <div class="info-box" data-i18n="scanTip">
+                        💡 掃碼槍掃QR碼 → 自動記錄寄件號和時間
                     </div>
 
                     <div id="successMessage"></div>
 
                     <div class="input-group">
-                        <label for="waybillNumber">寄件编号 (Tracking Number)</label>
-                        <input type="text" id="waybillNumber" placeholder="例如: tw2627552652668z" autofocus>
+                        <label for="waybillNumber" data-i18n="trackingLabel">寄件編號 (Tracking Number)</label>
+                        <input type="text" id="waybillNumber" data-placeholder="trackingPlaceholder" placeholder="例如: tw2627552652668z" autofocus>
                     </div>
 
                     <div class="input-group">
-                        <label for="status">包货状态</label>
+                        <label for="status" data-i18n="statusLabel">包貨狀態</label>
                         <select id="status">
-                            <option value="">-- 选择状态 --</option>
-                            <option value="start">📍 开始包货</option>
-                            <option value="complete">✓ 完成包货</option>
+                            <option value="" data-i18n="statusSelect">-- 選擇狀態 --</option>
+                            <option value="start" data-i18n="statusStart">📍 開始包貨</option>
+                            <option value="complete" data-i18n="statusComplete">✓ 完成包貨</option>
                         </select>
                     </div>
 
                     <div class="button-group">
-                        <button class="btn-start" onclick="recordStart()">开始 (F1)</button>
-                        <button class="btn-complete" onclick="recordComplete()">完成 (F2)</button>
+                        <button class="btn-start" onclick="recordStart()" data-i18n="btnStart">開始 (F1)</button>
+                        <button class="btn-complete" onclick="recordComplete()" data-i18n="btnComplete">完成 (F2)</button>
                     </div>
 
                     <div class="stats">
                         <div class="stat-box">
                             <div class="number" id="totalRecords">0</div>
-                            <div class="label">总扫描次数</div>
+                            <div class="label" data-i18n="totalRecords">總掃描次數</div>
                         </div>
                         <div class="stat-box">
                             <div class="number" id="pairsCount">0</div>
-                            <div class="label">完成对数</div>
+                            <div class="label" data-i18n="pairsCount">完成對數</div>
                         </div>
                     </div>
 
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                        <button class="btn-export" onclick="exportToExcel()" style="width: 100%; margin-bottom: 10px;">
-                            📥 导出 Excel
+                        <button class="btn-export" onclick="exportToExcel()" style="width: 100%; margin-bottom: 10px;" data-i18n="exportBtn">
+                            📥 導出 Excel
                         </button>
-                        <button class="btn-clear" onclick="clearAllData()" style="width: 100%;">
-                            🗑️ 清空所有数据
+                        <button class="btn-clear" onclick="clearAllData()" style="width: 100%;" data-i18n="clearBtn">
+                            🗑️ 清空所有資料
                         </button>
                     </div>
                 </div>
 
-                <!-- 右侧：统计 -->
                 <div class="card">
-                    <h2>📊 快速统计</h2>
+                    <h2 data-i18n="quickStats">📊 快速統計</h2>
 
                     <div style="margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
                         <div style="margin-bottom: 10px;">
-                            <strong>📈 今日数据</strong>
+                            <strong data-i18n="todayData">📈 今日資料</strong>
                         </div>
                         <div style="font-size: 0.95em; color: #666; line-height: 1.8;">
-                            <div>已开始: <span id="startCount">0</span> 件</div>
-                            <div>已完成: <span id="completeCount">0</span> 件</div>
-                            <div>平均耗时: <span id="avgDuration">-</span></div>
-                            <div>最长耗时: <span id="maxDuration">-</span></div>
-                            <div>最短耗时: <span id="minDuration">-</span></div>
+                            <div><span data-i18n="started">已開始</span>: <span id="startCount">0</span> 件</div>
+                            <div><span data-i18n="completed">已完成</span>: <span id="completeCount">0</span> 件</div>
+                            <div><span data-i18n="avgDuration">平均耗時</span>: <span id="avgDuration">-</span></div>
+                            <div><span data-i18n="maxDuration">最長耗時</span>: <span id="maxDuration">-</span></div>
+                            <div><span data-i18n="minDuration">最短耗時</span>: <span id="minDuration">-</span></div>
                         </div>
                     </div>
 
                     <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px; border-left: 4px solid #FF9800;">
-                        <strong style="color: #e65100;">⚡ 快捷键</strong>
+                        <strong style="color: #e65100;" data-i18n="shortcuts">⚡ 快捷鍵</strong>
                         <div style="font-size: 0.9em; color: #666; margin-top: 10px; line-height: 1.8;">
-                            <div><code>F1</code> = 开始包货</div>
-                            <div><code>F2</code> = 完成包货</div>
-                            <div><code>Ctrl+E</code> = 导出Excel</div>
+                            <div><code>F1</code> = <span data-i18n="statusStart">📍 開始包貨</span></div>
+                            <div><code>F2</code> = <span data-i18n="statusComplete">✓ 完成包貨</span></div>
+                            <div><code>Ctrl+E</code> = <span data-i18n="exportBtn">📥 導出 Excel</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 完整记录表 -->
                 <div class="card records-container">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2 style="margin: 0;">📋 扫码记录</h2>
-                        <span style="color: #999; font-size: 0.9em;" id="recordCount">共 0 条记录</span>
+                        <h2 style="margin: 0;" data-i18n="recordsTable">📋 掃碼記錄</h2>
+                        <span style="color: #999; font-size: 0.9em;" id="recordCount">共 0 條記錄</span>
                     </div>
 
                     <div id="recordsTable"></div>
@@ -572,20 +607,20 @@
         <!-- 标签页2：异常查询系统 -->
         <div id="lookup-tab" class="tab-content">
             <div class="card">
-                <h2>🔍 异常包裹查询</h2>
+                <h2 data-i18n="queryTitle">🔍 異常包裹查詢</h2>
 
-                <div class="info-box">
-                    💡 输入TW编号后，系统会显示这个包裹的所有扫码时间
+                <div class="info-box" data-i18n="queryTip">
+                    💡 輸入TW編號後，系統會顯示這個包裹的所有掃碼時間
                 </div>
 
                 <div class="search-box">
                     <input
                         type="text"
                         id="waybillInput"
+                        data-placeholder="trackingPlaceholder"
                         placeholder="例如: tw2627552652668z"
-                        autofocus
                     >
-                    <button class="btn-search" onclick="queryWaybill()">查询</button>
+                    <button class="btn-search" onclick="queryWaybill()" data-i18n="searchBtn">查詢</button>
                 </div>
 
                 <div id="resultsContainer"></div>
@@ -595,10 +630,161 @@
 
     <script>
         const STORAGE_KEY = 'packageScannerData';
+        let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
 
-        // ========== 标签页切换 ==========
+        const translations = {
+            'zh-TW': {
+                title: '📦 包貨管理系統',
+                subtitle: '掃碼輸入 + 異常查詢 | 電腦 + 手機通用',
+                scanTab: '📥 掃碼輸入系統',
+                lookupTab: '🔍 異常查詢系統',
+                scanInput: '🔍 掃碼輸入',
+                scanTip: '💡 掃碼槍掃QR碼 → 自動記錄寄件號和時間',
+                trackingLabel: '寄件編號 (Tracking Number)',
+                trackingPlaceholder: '例如: tw2627552652668z',
+                statusLabel: '包貨狀態',
+                statusSelect: '-- 選擇狀態 --',
+                statusStart: '📍 開始包貨',
+                statusComplete: '✓ 完成包貨',
+                btnStart: '開始 (F1)',
+                btnComplete: '完成 (F2)',
+                totalRecords: '總掃描次數',
+                pairsCount: '完成對數',
+                exportBtn: '📥 導出 Excel',
+                clearBtn: '🗑️ 清空所有資料',
+                quickStats: '📊 快速統計',
+                todayData: '📈 今日資料',
+                started: '已開始',
+                completed: '已完成',
+                avgDuration: '平均耗時',
+                maxDuration: '最長耗時',
+                minDuration: '最短耗時',
+                shortcuts: '⚡ 快捷鍵',
+                recordsTable: '📋 掃碼記錄',
+                recordCount: '共',
+                recordsCount: '條記錄',
+                emptyRecords: '📭 還沒有掃描記錄',
+                waybillCol: '寄件編號',
+                statusCol: '狀態',
+                timeCol: '時間',
+                actionCol: '操作',
+                statusStartCol: '開始',
+                statusCompleteCol: '完成',
+                deleteBtn: '刪除',
+                queryTitle: '🔍 異常包裹查詢',
+                queryTip: '💡 輸入TW編號後，系統會顯示這個包裹的所有掃碼時間',
+                searchBtn: '查詢',
+                inputError: '❌ 請輸入TW編號',
+                notFound: '🔍',
+                notFoundMsg: '沒有找到這個寄件號',
+                notFoundTip: '請檢查編號是否正確',
+                dateField: '📅 日期',
+                startTimeField: '⏱️ 開始時間',
+                completeTimeField: '✓ 完成時間',
+                durationField: '⏳ 包貨耗時',
+                onGoing: '進行中',
+                multipleRecords: '⚠️ 這個寄件號有',
+                multipleRecordsTip: '條記錄（可能重複掃了或出了問題）',
+                recordNum: '記錄',
+                confirmDelete: '確定要刪除這條記錄嗎？',
+                exportSuccess: '✓ 已導出',
+                exportError: '沒有完成的配對資料，無法導出',
+                exportNotice: '條記錄',
+                confirmClear: '⚠️ 確定要清空所有資料嗎？此操作無法撤銷！',
+                confirmClear2: '再確認一次？所有掃碼記錄都會被刪除！',
+                clearSuccess: '✓ 所有資料已清空',
+                recordedMsg: '✓ 已記錄',
+                pleaseInput: '請掃描或輸入寄件編號'
+            },
+            'en': {
+                title: '📦 Package Management System',
+                subtitle: 'QR Code Scanning + Anomaly Lookup | Desktop & Mobile',
+                scanTab: '📥 Scanner System',
+                lookupTab: '🔍 Lookup System',
+                scanInput: '🔍 Scan Input',
+                scanTip: '💡 Scan QR code → Auto-record tracking number and timestamp',
+                trackingLabel: 'Tracking Number',
+                trackingPlaceholder: 'e.g.: tw2627552652668z',
+                statusLabel: 'Packing Status',
+                statusSelect: '-- Select Status --',
+                statusStart: '📍 Start Packing',
+                statusComplete: '✓ Complete Packing',
+                btnStart: 'Start (F1)',
+                btnComplete: 'Complete (F2)',
+                totalRecords: 'Total Scans',
+                pairsCount: 'Completed Pairs',
+                exportBtn: '📥 Export Excel',
+                clearBtn: '🗑️ Clear All Data',
+                quickStats: '📊 Quick Statistics',
+                todayData: '📈 Today\'s Data',
+                started: 'Started',
+                completed: 'Completed',
+                avgDuration: 'Avg Duration',
+                maxDuration: 'Max Duration',
+                minDuration: 'Min Duration',
+                shortcuts: '⚡ Shortcuts',
+                recordsTable: '📋 Scan Records',
+                recordCount: 'Total',
+                recordsCount: 'records',
+                emptyRecords: '📭 No scan records yet',
+                waybillCol: 'Tracking #',
+                statusCol: 'Status',
+                timeCol: 'Time',
+                actionCol: 'Action',
+                statusStartCol: 'Started',
+                statusCompleteCol: 'Completed',
+                deleteBtn: 'Delete',
+                queryTitle: '🔍 Package Lookup',
+                queryTip: '💡 Enter tracking number to see all scan times for this package',
+                searchBtn: 'Search',
+                inputError: '❌ Please enter tracking number',
+                notFound: '🔍',
+                notFoundMsg: 'Package not found',
+                notFoundTip: 'Please verify the tracking number',
+                dateField: '📅 Date',
+                startTimeField: '⏱️ Start Time',
+                completeTimeField: '✓ Complete Time',
+                durationField: '⏳ Duration',
+                onGoing: 'In Progress',
+                multipleRecords: '⚠️ Found',
+                multipleRecordsTip: 'records (may be duplicates or issues)',
+                recordNum: 'Record',
+                confirmDelete: 'Are you sure you want to delete this record?',
+                exportSuccess: '✓ Exported',
+                exportError: 'No completed pairs to export',
+                exportNotice: 'records',
+                confirmClear: '⚠️ Are you sure you want to clear all data? This cannot be undone!',
+                confirmClear2: 'Confirm again? All scan records will be deleted!',
+                clearSuccess: '✓ All data cleared',
+                recordedMsg: '✓ Recorded',
+                pleaseInput: 'Please scan or enter tracking number'
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('appLanguage', lang);
+            updatePageLanguage();
+            updatePlaceholders();
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function t(key) {
+            return translations[currentLanguage][key] || translations['zh-TW'][key];
+        }
+
+        function updatePageLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = t(key);
+            });
+        }
+
         function switchTab(tabName) {
-            // 隐藏所有标签
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -606,11 +792,9 @@
                 btn.classList.remove('active');
             });
 
-            // 显示选中标签
             document.getElementById(tabName + '-tab').classList.add('active');
             event.target.classList.add('active');
 
-            // 获焦
             if (tabName === 'input') {
                 setTimeout(() => document.getElementById('waybillNumber').focus(), 100);
             } else {
@@ -618,7 +802,6 @@
             }
         }
 
-        // ========== 数据管理 ==========
         function getAllRecords() {
             const data = localStorage.getItem(STORAGE_KEY);
             return data ? JSON.parse(data) : [];
@@ -642,7 +825,8 @@
             });
 
             saveRecords(records);
-            showSuccessMessage(`✓ 已记录: ${waybill} (${status === 'start' ? '开始' : '完成'})`);
+            const statusText = status === 'start' ? t('statusStart') : t('statusComplete');
+            showSuccessMessage(`${t('recordedMsg')}: ${waybill} (${statusText})`);
             clearInput();
         }
 
@@ -652,7 +836,6 @@
             document.getElementById('waybillNumber').focus();
         }
 
-        // ========== 时间格式化 ==========
         function formatTime(date) {
             if (!(date instanceof Date)) {
                 date = new Date(date);
@@ -667,22 +850,32 @@
             const date = new Date(dateString);
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-            const weekDay = weekDays[date.getDay()];
-            return `${month}月${day}日 (礼拜${weekDay})`;
+
+            if (currentLanguage === 'en') {
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                return `${monthNames[date.getMonth()]} ${day} (${dayNames[date.getDay()]})`;
+            } else {
+                const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+                const weekDay = weekDays[date.getDay()];
+                return `${month}月${day}日 (星期${weekDay})`;
+            }
         }
 
         function formatDuration(seconds) {
             const minutes = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
-            return `${minutes}分${secs}秒`;
+            if (currentLanguage === 'en') {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${minutes}分${secs}秒`;
+            }
         }
 
-        // ========== 扫码功能 ==========
         function recordStart() {
             const waybill = document.getElementById('waybillNumber').value.trim();
             if (!waybill) {
-                alert('请扫描或输入寄件编号');
+                alert(t('pleaseInput'));
                 return;
             }
             addRecord(waybill, 'start');
@@ -691,7 +884,7 @@
         function recordComplete() {
             const waybill = document.getElementById('waybillNumber').value.trim();
             if (!waybill) {
-                alert('请扫描或输入寄件编号');
+                alert(t('pleaseInput'));
                 return;
             }
             addRecord(waybill, 'complete');
@@ -705,7 +898,6 @@
             }, 3000);
         }
 
-        // ========== 配对计算 ==========
         function calculatePairs() {
             const records = getAllRecords();
             const pairs = [];
@@ -743,7 +935,6 @@
             return pairs;
         }
 
-        // ========== 显示记录 ==========
         function loadAndDisplayRecords() {
             const records = getAllRecords();
             const pairs = calculatePairs();
@@ -775,31 +966,31 @@
 
         function displayRecordsTable(records) {
             const tableDiv = document.getElementById('recordsTable');
-            document.getElementById('recordCount').textContent = `共 ${records.length} 条记录`;
+            document.getElementById('recordCount').textContent = `${t('recordCount')} ${records.length} ${t('recordsCount')}`;
 
             if (records.length === 0) {
-                tableDiv.innerHTML = '<div class="empty-state"><p>📭 还没有扫描记录</p></div>';
+                tableDiv.innerHTML = `<div class="empty-state"><p>${t('emptyRecords')}</p></div>`;
                 return;
             }
 
             let html = '<table>';
             html += '<thead><tr>';
-            html += '<th>寄件编号</th>';
-            html += '<th>状态</th>';
-            html += '<th>时间</th>';
-            html += '<th>操作</th>';
+            html += `<th>${t('waybillCol')}</th>`;
+            html += `<th>${t('statusCol')}</th>`;
+            html += `<th>${t('timeCol')}</th>`;
+            html += `<th>${t('actionCol')}</th>`;
             html += '</tr></thead><tbody>';
 
             const recordsReversed = [...records].reverse();
             recordsReversed.forEach(record => {
                 const statusDisplay = record.status === 'start'
-                    ? '<span class="status-start">开始</span>'
-                    : '<span class="status-complete">完成</span>';
+                    ? `<span class="status-start">${t('statusStartCol')}</span>`
+                    : `<span class="status-complete">${t('statusCompleteCol')}</span>`;
                 html += `<tr>`;
                 html += `<td><code>${record.waybill}</code></td>`;
                 html += `<td>${statusDisplay}</td>`;
                 html += `<td>${record.timeDisplay}</td>`;
-                html += `<td><button class="btn-delete" onclick="deleteRecord(${record.id})">删除</button></td>`;
+                html += `<td><button class="btn-delete" onclick="deleteRecord(${record.id})">${t('deleteBtn')}</button></td>`;
                 html += `</tr>`;
             });
 
@@ -808,24 +999,27 @@
         }
 
         function deleteRecord(id) {
-            if (confirm('确定要删除这条记录吗？')) {
+            if (confirm(t('confirmDelete'))) {
                 const records = getAllRecords();
                 const filtered = records.filter(r => r.id !== id);
                 saveRecords(filtered);
             }
         }
 
-        // ========== 导出功能 ==========
         function exportToExcel() {
             const pairs = calculatePairs();
 
             if (pairs.length === 0) {
-                alert('没有完成的配对数据，无法导出');
+                alert(t('exportError'));
                 return;
             }
 
+            const headerRow = currentLanguage === 'en'
+                ? ['Tracking #', 'Start Time', 'Complete Time', 'Duration (Min:Sec)', 'Duration (Sec)']
+                : ['寄件編號', '開始時間', '完成時間', '耗時(分秒)', '耗時(秒)'];
+
             const data = [
-                ['寄件编号', '开始时间', '完成时间', '耗时(分秒)', '耗时(秒)'],
+                headerRow,
                 ...pairs.map(p => [
                     p.waybill,
                     p.startDisplay,
@@ -837,7 +1031,8 @@
 
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '包货记录');
+            const sheetName = currentLanguage === 'en' ? 'Packing Records' : '包貨記錄';
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
             ws['!cols'] = [
                 { wch: 20 },
@@ -847,23 +1042,24 @@
                 { wch: 10 }
             ];
 
-            const fileName = `包货记录_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = currentLanguage === 'en'
+                ? `packing_records_${new Date().toISOString().split('T')[0]}.xlsx`
+                : `包貨記錄_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
 
-            showSuccessMessage(`✓ 已导出 ${pairs.length} 条记录`);
+            showSuccessMessage(`${t('exportSuccess')} ${pairs.length} ${t('exportNotice')}`);
         }
 
         function clearAllData() {
-            if (confirm('⚠️ 确定要清空所有数据吗？此操作无法撤销！')) {
-                if (confirm('再确认一次？所有扫码记录都会被删除！')) {
+            if (confirm(t('confirmClear'))) {
+                if (confirm(t('confirmClear2'))) {
                     localStorage.removeItem(STORAGE_KEY);
                     loadAndDisplayRecords();
-                    showSuccessMessage('✓ 所有数据已清空');
+                    showSuccessMessage(t('clearSuccess'));
                 }
             }
         }
 
-        // ========== 查询功能 ==========
         function queryWaybill() {
             const waybill = document.getElementById('waybillInput').value.trim().toLowerCase();
             const resultsDiv = document.getElementById('resultsContainer');
@@ -871,7 +1067,7 @@
             if (!waybill) {
                 resultsDiv.innerHTML = `
                     <div class="error-message">
-                        ❌ 请输入TW编号
+                        ${t('inputError')}
                     </div>
                 `;
                 return;
@@ -883,9 +1079,9 @@
             if (matchingRecords.length === 0) {
                 resultsDiv.innerHTML = `
                     <div class="empty-state">
-                        <div style="font-size: 3em; margin-bottom: 20px;">🔍</div>
-                        <p>没有找到这个寄件号</p>
-                        <p style="font-size: 0.9em; color: #ccc;">请检查编号是否正确</p>
+                        <div style="font-size: 3em; margin-bottom: 20px;">${t('notFound')}</div>
+                        <p>${t('notFoundMsg')}</p>
+                        <p style="font-size: 0.9em; color: #ccc;">${t('notFoundTip')}</p>
                     </div>
                 `;
                 return;
@@ -932,7 +1128,7 @@
                         startDisplay: formatTime(startRecords[i].timestamp),
                         completeDisplay: '-',
                         dateDisplay: formatDate(startRecords[i].timestamp),
-                        durationDisplay: '进行中'
+                        durationDisplay: t('onGoing')
                     });
                 }
             }
@@ -942,7 +1138,7 @@
             if (pairs.length > 1) {
                 html += `
                     <div class="multiple-results">
-                        ⚠️ 这个寄件号有 ${pairs.length} 条记录（可能重复扫了或出了问题）
+                        ${t('multipleRecords')} ${pairs.length} ${t('multipleRecordsTip')}
                     </div>
                 `;
             }
@@ -951,24 +1147,24 @@
                 html += `
                     <div class="result-item">
                         <div class="waybill-number">
-                            TW编号：${waybill.toUpperCase()}
-                            ${pairs.length > 1 ? `<span style="font-size: 0.7em; color: #999; margin-left: 10px;">记录 ${index + 1}</span>` : ''}
+                            TW: ${waybill.toUpperCase()}
+                            ${pairs.length > 1 ? `<span style="font-size: 0.7em; color: #999; margin-left: 10px;">${t('recordNum')} ${index + 1}</span>` : ''}
                         </div>
                         <div class="result-grid">
                             <div class="result-field">
-                                <div class="result-label">📅 日期</div>
+                                <div class="result-label">${t('dateField')}</div>
                                 <div class="result-value">${pair.dateDisplay}</div>
                             </div>
                             <div class="result-field">
-                                <div class="result-label">⏱️ 开始时间</div>
+                                <div class="result-label">${t('startTimeField')}</div>
                                 <div class="result-value">${pair.startDisplay}</div>
                             </div>
                             <div class="result-field">
-                                <div class="result-label">✓ 完成时间</div>
+                                <div class="result-label">${t('completeTimeField')}</div>
                                 <div class="result-value">${pair.completeDisplay}</div>
                             </div>
                             <div class="result-field duration">
-                                <div class="result-label">⏳ 包货耗时</div>
+                                <div class="result-label">${t('durationField')}</div>
                                 <div class="result-value">${pair.durationDisplay}</div>
                             </div>
                         </div>
@@ -979,8 +1175,35 @@
             resultsDiv.innerHTML = html;
         }
 
-        // ========== 初始化 ==========
+        function updatePlaceholders() {
+            const waybillInput = document.getElementById('waybillNumber');
+            const queryInput = document.getElementById('waybillInput');
+            if (waybillInput) {
+                waybillInput.placeholder = t('trackingPlaceholder');
+            }
+            if (queryInput) {
+                queryInput.placeholder = t('trackingPlaceholder');
+            }
+        }
+
+        function initLanguage() {
+            const savedLang = localStorage.getItem('appLanguage') || 'zh-TW';
+            currentLanguage = savedLang;
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if ((savedLang === 'zh-TW' && btn.textContent.includes('繁體')) ||
+                    (savedLang === 'en' && btn.textContent === 'English')) {
+                    btn.classList.add('active');
+                }
+            });
+
+            updatePageLanguage();
+            updatePlaceholders();
+        }
+
         function initApp() {
+            initLanguage();
             loadAndDisplayRecords();
 
             document.addEventListener('keydown', (e) => {
