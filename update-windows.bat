@@ -14,8 +14,8 @@ if errorlevel 1 (
   exit /b
 )
 
-echo Extracting...
-tar -xf _update.zip
+echo Extracting and updating files (your cameras and users are kept)...
+tar -xf _update.zip --strip-components=1
 if errorlevel 1 (
   echo [ERROR] Extract failed.
   del _update.zip
@@ -23,11 +23,7 @@ if errorlevel 1 (
   exit /b
 )
 
-echo Copying files (your cameras and users are kept)...
-xcopy /E /Y /Q avnet.ai-claude-photography-system-software-mat8x8\* . >nul
-
 del _update.zip
-rmdir /S /Q avnet.ai-claude-photography-system-software-mat8x8
 
 echo Installing components...
 call npm install
