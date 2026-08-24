@@ -46,6 +46,11 @@ body {
   gap: 18px;
 }
 
+.brand-home {
+  text-decoration: none;
+  color: inherit;
+}
+
 .topbar h1 {
   font-size: 1.1rem;
   margin: 0;
