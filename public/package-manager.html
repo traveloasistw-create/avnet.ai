@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 包货管理系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid transparent;
+            background: #f5f5f5;
+            color: #666;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-button:hover {
+            background: #efefef;
+        }
+
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-complete {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-complete:hover {
+            background: #0b7dda;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-export {
+            background: #FF9800;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #e68900;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn-search {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-search:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-clear {
+            background: #f44336;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        .btn-clear:hover {
+            background: #da190b;
+        }
+
+        .btn-delete {
+            background: #ff6b6b;
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.85em;
+        }
+
+        .btn-delete:hover {
+            background: #ff5252;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .records-container {
+            grid-column: 1 / -1;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table thead {
+            background: #f5f5f5;
+            position: sticky;
+            top: 0;
+        }
+
+        table th {
+            padding: 12px;
+            text-align: left;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #666;
+        }
+
+        table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .status-start {
+            background: #c8e6c9;
+            color: #2e7d32;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-complete {
+            background: #bbdefb;
+            color: #1565c0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .success-message {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-in-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            flex: 1;
+        }
+
+        .search-box button {
+            padding: 12px 20px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+            color: #1565c0;
+        }
+
+        .result-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .waybill-number {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .result-field {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .result-label {
+            font-size: 0.9em;
+            color: #999;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+
+        .duration {
+            background: #fff3e0;
+            border-left: 4px solid #FF9800;
+        }
+
+        .duration .result-value {
+            color: #e65100;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #f44336;
+            margin-bottom: 20px;
+        }
+
+        .multiple-results {
+            background: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            color: #6a1b9a;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .records-container {
+                grid-column: 1;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 包货管理系统</h1>
+            <p>扫码输入 + 异常查询</p>
+        </header>
+
+        <!-- 标签页 -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('input')">
+                📥 扫码输入系统
+            </button>
+            <button class="tab-button" onclick="switchTab('lookup')">
+                🔍 异常查询系统
+            </button>
+        </div>
+
+        <!-- 标签页1：扫码输入系统 -->
+        <div id="input-tab" class="tab-content active">
+            <div class="main-grid">
+                <!-- 左侧：输入区域 -->
+                <div class="card">
+                    <h2>🔍 扫码输入</h2>
+
+                    <div class="info-box">
+                        💡 扫码枪扫QR码 → 自动记录寄件号和时间
+                    </div>
+
+                    <div id="successMessage"></div>
+
+                    <div class="input-group">
+                        <label for="waybillNumber">寄件编号 (Tracking Number)</label>
+                        <input type="text" id="waybillNumber" placeholder="例如: tw2627552652668z" autofocus>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="status">包货状态</label>
+                        <select id="status">
+                            <option value="">-- 选择状态 --</option>
+                            <option value="start">📍 开始包货</option>
+                            <option value="complete">✓ 完成包货</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-start" onclick="recordStart()">开始 (F1)</button>
+                        <button class="btn-complete" onclick="recordComplete()">完成 (F2)</button>
+                    </div>
+
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="number" id="totalRecords">0</div>
+                            <div class="label">总扫描次数</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="number" id="pairsCount">0</div>
+                            <div class="label">完成对数</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <button class="btn-export" onclick="exportToExcel()" style="width: 100%; margin-bottom: 10px;">
+                            📥 导出 Excel
+                        </button>
+                        <button class="btn-clear" onclick="clearAllData()" style="width: 100%;">
+                            🗑️ 清空所有数据
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 右侧：统计 -->
+                <div class="card">
+                    <h2>📊 快速统计</h2>
+
+                    <div style="margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                        <div style="margin-bottom: 10px;">
+                            <strong>📈 今日数据</strong>
+                        </div>
+                        <div style="font-size: 0.95em; color: #666; line-height: 1.8;">
+                            <div>已开始: <span id="startCount">0</span> 件</div>
+                            <div>已完成: <span id="completeCount">0</span> 件</div>
+                            <div>平均耗时: <span id="avgDuration">-</span></div>
+                            <div>最长耗时: <span id="maxDuration">-</span></div>
+                            <div>最短耗时: <span id="minDuration">-</span></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px; border-left: 4px solid #FF9800;">
+                        <strong style="color: #e65100;">⚡ 快捷键</strong>
+                        <div style="font-size: 0.9em; color: #666; margin-top: 10px; line-height: 1.8;">
+                            <div><code>F1</code> = 开始包货</div>
+                            <div><code>F2</code> = 完成包货</div>
+                            <div><code>Ctrl+E</code> = 导出Excel</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完整记录表 -->
+                <div class="card records-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h2 style="margin: 0;">📋 扫码记录</h2>
+                        <span style="color: #999; font-size: 0.9em;" id="recordCount">共 0 条记录</span>
+                    </div>
+
+                    <div id="recordsTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 标签页2：异常查询系统 -->
+        <div id="lookup-tab" class="tab-content">
+            <div class="card">
+                <h2>🔍 异常包裹查询</h2>
+
+                <div class="info-box">
+                    💡 输入TW编号后，系统会显示这个包裹的所有扫码时间
+                </div>
+
+                <div class="search-box">
+                    <input
+                        type="text"
+                        id="waybillInput"
+                        placeholder="例如: tw2627552652668z"
+                        autofocus
+                    >
+                    <button class="btn-search" onclick="queryWaybill()">查询</button>
+                </div>
+
+                <div id="resultsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'packageScannerData';
+
+        // ========== 标签页切换 ==========
+        function switchTab(tabName) {
+            // 隐藏所有标签
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 显示选中标签
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            // 获焦
+            if (tabName === 'input') {
+                setTimeout(() => document.getElementById('waybillNumber').focus(), 100);
+            } else {
+                setTimeout(() => document.getElementById('waybillInput').focus(), 100);
+            }
+        }
+
+        // ========== 数据管理 ==========
+        function getAllRecords() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveRecords(records) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            loadAndDisplayRecords();
+        }
+
+        function addRecord(waybill, status) {
+            const records = getAllRecords();
+            const timestamp = new Date();
+
+            records.push({
+                id: Date.now(),
+                waybill: waybill.trim(),
+                status: status,
+                timestamp: timestamp.toISOString(),
+                timeDisplay: formatTime(timestamp)
+            });
+
+            saveRecords(records);
+            showSuccessMessage(`✓ 已记录: ${waybill} (${status === 'start' ? '开始' : '完成'})`);
+            clearInput();
+        }
+
+        function clearInput() {
+            document.getElementById('waybillNumber').value = '';
+            document.getElementById('status').value = '';
+            document.getElementById('waybillNumber').focus();
+        }
+
+        // ========== 时间格式化 ==========
+        function formatTime(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            const weekDay = weekDays[date.getDay()];
+            return `${month}月${day}日 (礼拜${weekDay})`;
+        }
+
+        function formatDuration(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}分${secs}秒`;
+        }
+
+        // ========== 扫码功能 ==========
+        function recordStart() {
+            const waybill = document.getElementById('waybillNumber').value.trim();
+            if (!waybill) {
+                alert('请扫描或输入寄件编号');
+                return;
+            }
+            addRecord(waybill, 'start');
+        }
+
+        function recordComplete() {
+            const waybill = document.getElementById('waybillNumber').value.trim();
+            if (!waybill) {
+                alert('请扫描或输入寄件编号');
+                return;
+            }
+            addRecord(waybill, 'complete');
+        }
+
+        function showSuccessMessage(msg) {
+            const msgDiv = document.getElementById('successMessage');
+            msgDiv.innerHTML = `<div class="success-message">${msg}</div>`;
+            setTimeout(() => {
+                msgDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        // ========== 配对计算 ==========
+        function calculatePairs() {
+            const records = getAllRecords();
+            const pairs = [];
+            const waybillMap = {};
+
+            records.forEach(record => {
+                if (!waybillMap[record.waybill]) {
+                    waybillMap[record.waybill] = [];
+                }
+                waybillMap[record.waybill].push(record);
+            });
+
+            Object.keys(waybillMap).forEach(waybill => {
+                const events = waybillMap[waybill];
+                for (let i = 0; i < events.length - 1; i++) {
+                    if (events[i].status === 'start' && events[i + 1].status === 'complete') {
+                        const startTime = new Date(events[i].timestamp);
+                        const completeTime = new Date(events[i + 1].timestamp);
+                        const duration = (completeTime - startTime) / 1000;
+
+                        pairs.push({
+                            waybill: waybill,
+                            startTime: startTime,
+                            completeTime: completeTime,
+                            duration: duration,
+                            startDisplay: formatTime(events[i].timestamp),
+                            completeDisplay: formatTime(events[i + 1].timestamp),
+                            durationDisplay: formatDuration(duration)
+                        });
+                        i++;
+                    }
+                }
+            });
+
+            return pairs;
+        }
+
+        // ========== 显示记录 ==========
+        function loadAndDisplayRecords() {
+            const records = getAllRecords();
+            const pairs = calculatePairs();
+
+            updateStats(records, pairs);
+            displayRecordsTable(records);
+        }
+
+        function updateStats(records, pairs) {
+            const startCount = records.filter(r => r.status === 'start').length;
+            const completeCount = records.filter(r => r.status === 'complete').length;
+
+            document.getElementById('totalRecords').textContent = records.length;
+            document.getElementById('pairsCount').textContent = pairs.length;
+            document.getElementById('startCount').textContent = startCount;
+            document.getElementById('completeCount').textContent = completeCount;
+
+            if (pairs.length > 0) {
+                const durations = pairs.map(p => p.duration);
+                const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+                const maxDuration = Math.max(...durations);
+                const minDuration = Math.min(...durations);
+
+                document.getElementById('avgDuration').textContent = formatDuration(avgDuration);
+                document.getElementById('maxDuration').textContent = formatDuration(maxDuration);
+                document.getElementById('minDuration').textContent = formatDuration(minDuration);
+            }
+        }
+
+        function displayRecordsTable(records) {
+            const tableDiv = document.getElementById('recordsTable');
+            document.getElementById('recordCount').textContent = `共 ${records.length} 条记录`;
+
+            if (records.length === 0) {
+                tableDiv.innerHTML = '<div class="empty-state"><p>📭 还没有扫描记录</p></div>';
+                return;
+            }
+
+            let html = '<table>';
+            html += '<thead><tr>';
+            html += '<th>寄件编号</th>';
+            html += '<th>状态</th>';
+            html += '<th>时间</th>';
+            html += '<th>操作</th>';
+            html += '</tr></thead><tbody>';
+
+            const recordsReversed = [...records].reverse();
+            recordsReversed.forEach(record => {
+                const statusDisplay = record.status === 'start'
+                    ? '<span class="status-start">开始</span>'
+                    : '<span class="status-complete">完成</span>';
+                html += `<tr>`;
+                html += `<td><code>${record.waybill}</code></td>`;
+                html += `<td>${statusDisplay}</td>`;
+                html += `<td>${record.timeDisplay}</td>`;
+                html += `<td><button class="btn-delete" onclick="deleteRecord(${record.id})">删除</button></td>`;
+                html += `</tr>`;
+            });
+
+            html += '</tbody></table>';
+            tableDiv.innerHTML = html;
+        }
+
+        function deleteRecord(id) {
+            if (confirm('确定要删除这条记录吗？')) {
+                const records = getAllRecords();
+                const filtered = records.filter(r => r.id !== id);
+                saveRecords(filtered);
+            }
+        }
+
+        // ========== 导出功能 ==========
+        function exportToExcel() {
+            const pairs = calculatePairs();
+
+            if (pairs.length === 0) {
+                alert('没有完成的配对数据，无法导出');
+                return;
+            }
+
+            const data = [
+                ['寄件编号', '开始时间', '完成时间', '耗时(分秒)', '耗时(秒)'],
+                ...pairs.map(p => [
+                    p.waybill,
+                    p.startDisplay,
+                    p.completeDisplay,
+                    p.durationDisplay,
+                    Math.round(p.duration)
+                ])
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '包货记录');
+
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 10 }
+            ];
+
+            const fileName = `包货记录_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+
+            showSuccessMessage(`✓ 已导出 ${pairs.length} 条记录`);
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ 确定要清空所有数据吗？此操作无法撤销！')) {
+                if (confirm('再确认一次？所有扫码记录都会被删除！')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    loadAndDisplayRecords();
+                    showSuccessMessage('✓ 所有数据已清空');
+                }
+            }
+        }
+
+        // ========== 查询功能 ==========
+        function queryWaybill() {
+            const waybill = document.getElementById('waybillInput').value.trim().toLowerCase();
+            const resultsDiv = document.getElementById('resultsContainer');
+
+            if (!waybill) {
+                resultsDiv.innerHTML = `
+                    <div class="error-message">
+                        ❌ 请输入TW编号
+                    </div>
+                `;
+                return;
+            }
+
+            const allRecords = getAllRecords();
+            const matchingRecords = allRecords.filter(r => r.waybill.toLowerCase() === waybill);
+
+            if (matchingRecords.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 3em; margin-bottom: 20px;">🔍</div>
+                        <p>没有找到这个寄件号</p>
+                        <p style="font-size: 0.9em; color: #ccc;">请检查编号是否正确</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const pairs = [];
+            const startRecords = matchingRecords.filter(r => r.status === 'start');
+            const completeRecords = matchingRecords.filter(r => r.status === 'complete');
+
+            startRecords.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            completeRecords.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            for (let i = 0; i < startRecords.length; i++) {
+                const startTime = new Date(startRecords[i].timestamp);
+
+                let matchingComplete = null;
+                for (let j = 0; j < completeRecords.length; j++) {
+                    const completeTime = new Date(completeRecords[j].timestamp);
+                    if (completeTime > startTime) {
+                        matchingComplete = completeRecords[j];
+                        completeRecords.splice(j, 1);
+                        break;
+                    }
+                }
+
+                if (matchingComplete) {
+                    const completeTime = new Date(matchingComplete.timestamp);
+                    const duration = (completeTime - startTime) / 1000;
+
+                    pairs.push({
+                        startTime: startTime,
+                        completeTime: completeTime,
+                        duration: duration,
+                        startDisplay: formatTime(startRecords[i].timestamp),
+                        completeDisplay: formatTime(matchingComplete.timestamp),
+                        dateDisplay: formatDate(startRecords[i].timestamp),
+                        durationDisplay: formatDuration(duration)
+                    });
+                } else {
+                    pairs.push({
+                        startTime: startTime,
+                        completeTime: null,
+                        duration: null,
+                        startDisplay: formatTime(startRecords[i].timestamp),
+                        completeDisplay: '-',
+                        dateDisplay: formatDate(startRecords[i].timestamp),
+                        durationDisplay: '进行中'
+                    });
+                }
+            }
+
+            let html = '';
+
+            if (pairs.length > 1) {
+                html += `
+                    <div class="multiple-results">
+                        ⚠️ 这个寄件号有 ${pairs.length} 条记录（可能重复扫了或出了问题）
+                    </div>
+                `;
+            }
+
+            pairs.forEach((pair, index) => {
+                html += `
+                    <div class="result-item">
+                        <div class="waybill-number">
+                            TW编号：${waybill.toUpperCase()}
+                            ${pairs.length > 1 ? `<span style="font-size: 0.7em; color: #999; margin-left: 10px;">记录 ${index + 1}</span>` : ''}
+                        </div>
+                        <div class="result-grid">
+                            <div class="result-field">
+                                <div class="result-label">📅 日期</div>
+                                <div class="result-value">${pair.dateDisplay}</div>
+                            </div>
+                            <div class="result-field">
+                                <div class="result-label">⏱️ 开始时间</div>
+                                <div class="result-value">${pair.startDisplay}</div>
+                            </div>
+                            <div class="result-field">
+                                <div class="result-label">✓ 完成时间</div>
+                                <div class="result-value">${pair.completeDisplay}</div>
+                            </div>
+                            <div class="result-field duration">
+                                <div class="result-label">⏳ 包货耗时</div>
+                                <div class="result-value">${pair.durationDisplay}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // ========== 初始化 ==========
+        function initApp() {
+            loadAndDisplayRecords();
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F1') {
+                    e.preventDefault();
+                    recordStart();
+                }
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    recordComplete();
+                }
+                if (e.ctrlKey && e.key === 'e') {
+                    e.preventDefault();
+                    exportToExcel();
+                }
+            });
+
+            document.getElementById('waybillInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    queryWaybill();
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
