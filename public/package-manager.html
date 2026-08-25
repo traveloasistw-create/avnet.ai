@@ -649,6 +649,11 @@
                 </div>
 
                 <div class="button-group">
+                    <button class="btn-search" onclick="document.getElementById('fileImport').click()" style="flex: 1;">📂 選擇檔案</button>
+                    <input type="file" id="fileImport" accept=".json,.csv,.xlsx" style="display: none;" onchange="handleFileImport(event)">
+                </div>
+
+                <div class="button-group">
                     <button class="btn-search" onclick="parseAndPreviewImport()" style="flex: 1;">📊 分析數據</button>
                     <button class="btn-export" onclick="importRecords()" style="flex: 1;">✅ 確認導入</button>
                 </div>
@@ -2403,6 +2408,45 @@
             });
 
             return { pairs, anomalies };
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+
+                // Handle different file types
+                if (file.name.endsWith('.json')) {
+                    try {
+                        const data = JSON.parse(content);
+                        if (Array.isArray(data)) {
+                            // If it's an array of records
+                            const csv = data.map(record => {
+                                return `${record.waybill},${record.timestamp || ''}`;
+                            }).join('\n');
+                            document.getElementById('importData').value = csv;
+                        } else if (data.records && Array.isArray(data.records)) {
+                            // If it's a JSON with records property
+                            const csv = data.records.map(record => {
+                                return `${record.waybill},${record.timestamp || ''}`;
+                            }).join('\n');
+                            document.getElementById('importData').value = csv;
+                        }
+                    } catch (err) {
+                        alert('❌ JSON 檔案格式錯誤');
+                    }
+                } else {
+                    // CSV or XLSX - use content directly
+                    document.getElementById('importData').value = content;
+                }
+
+                // Trigger preview
+                setTimeout(() => parseAndPreviewImport(), 100);
+            };
+            reader.readAsText(file);
         }
 
         function parseAndPreviewImport() {
