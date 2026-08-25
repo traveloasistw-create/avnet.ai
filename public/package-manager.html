@@ -538,6 +538,20 @@
                     <div id="successMessage"></div>
 
                     <div class="input-group">
+                        <label for="operatorCode">👤 員工代碼</label>
+                        <input type="text" id="operatorCode" placeholder="例如: laude01">
+                    </div>
+
+                    <div style="padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2196F3;">
+                        <div style="font-weight: 600; color: #1565c0; margin-bottom: 8px;">🕐 班次狀態</div>
+                        <div id="shiftStatus" style="font-size: 0.95em; color: #0d47a1; line-height: 1.6;">
+                            <div>狀態: <span id="shiftStatusText">未上班</span></div>
+                            <div>員工: <span id="shiftEmployeeText">-</span></div>
+                            <div>上班時間: <span id="shiftStartTimeText">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
                         <label for="waybillNumber" data-i18n="trackingLabel">寄件編號 (Tracking Number)</label>
                         <input type="text" id="waybillNumber" data-placeholder="trackingPlaceholder" placeholder="例如: tw2627552652668z" autofocus>
                     </div>
@@ -690,6 +704,16 @@
                         <button class="btn-search" onclick="filterAnalytics()" data-i18n="filterBtn">查詢</button>
                         <button class="btn-export" onclick="exportAnalyticsData()" data-i18n="exportBtn">📥 導出</button>
                     </div>
+
+                    <hr style="margin: 20px 0; border: none; border-top: 2px solid #eee;">
+
+                    <div style="margin-top: 20px;">
+                        <h3 style="color: #333; margin-bottom: 15px;">🕐 班次統計</h3>
+                        <div class="button-group">
+                            <button class="btn-search" onclick="showShiftStats()" style="flex: 1;">查看班次統計</button>
+                            <button class="btn-clear" onclick="clearShiftData()" style="flex: 1;">清空班次數據</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -715,6 +739,7 @@
 
     <script>
         const STORAGE_KEY = 'packageScannerData';
+        const SHIFT_KEY = 'shiftData';
         let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
 
         const translations = {
@@ -797,7 +822,19 @@
                 avgTimeCol: '平均耗時',
                 totalTimeCol: '總耗時',
                 noEmployee: '未指定',
-                noResults: '查詢範圍內未有記錄'
+                noResults: '查詢範圍內未有記錄',
+                shiftTab: '🕐 班次',
+                shiftStatus: '班次狀態',
+                shiftOngoing: '進行中',
+                shiftNotStarted: '未上班',
+                shiftStarted: '上班了',
+                shiftEnded: '下班了',
+                shiftDuration: '班次時長',
+                packagesCount: '包裹數',
+                completedCount: '完成數',
+                workTime: '工作時間',
+                idleTime: '空閒時間',
+                efficiency: '效率'
             },
             'en': {
                 title: '📦 Package Management System',
@@ -878,7 +915,19 @@
                 avgTimeCol: 'Avg Duration',
                 totalTimeCol: 'Total Duration',
                 noEmployee: 'Unassigned',
-                noResults: 'No records in selected range'
+                noResults: 'No records in selected range',
+                shiftTab: '🕐 Shifts',
+                shiftStatus: 'Shift Status',
+                shiftOngoing: 'Ongoing',
+                shiftNotStarted: 'Not Started',
+                shiftStarted: 'Started',
+                shiftEnded: 'Ended',
+                shiftDuration: 'Shift Duration',
+                packagesCount: 'Packages',
+                completedCount: 'Completed',
+                workTime: 'Work Time',
+                idleTime: 'Idle Time',
+                efficiency: 'Efficiency'
             },
             'id': {
                 title: '📦 Sistem Manajemen Paket',
@@ -959,7 +1008,19 @@
                 avgTimeCol: 'Durasi Rata-rata',
                 totalTimeCol: 'Total Durasi',
                 noEmployee: 'Tidak Ditugaskan',
-                noResults: 'Tidak ada catatan dalam rentang yang dipilih'
+                noResults: 'Tidak ada catatan dalam rentang yang dipilih',
+                shiftTab: '🕐 Shift',
+                shiftStatus: 'Status Shift',
+                shiftOngoing: 'Berlangsung',
+                shiftNotStarted: 'Belum Dimulai',
+                shiftStarted: 'Dimulai',
+                shiftEnded: 'Selesai',
+                shiftDuration: 'Durasi Shift',
+                packagesCount: 'Paket',
+                completedCount: 'Diselesaikan',
+                workTime: 'Waktu Kerja',
+                idleTime: 'Waktu Menganggur',
+                efficiency: 'Efisiensi'
             }
         };
 
@@ -1002,6 +1063,81 @@
             }
         }
 
+        function getActiveShift() {
+            const shifts = getAllShifts();
+            const activeShift = shifts.find(s => !s.endTime);
+            return activeShift || null;
+        }
+
+        function getAllShifts() {
+            const data = localStorage.getItem(SHIFT_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveShifts(shifts) {
+            localStorage.setItem(SHIFT_KEY, JSON.stringify(shifts));
+        }
+
+        function startShift(employee) {
+            const shifts = getAllShifts();
+
+            // 檢查是否已有活躍班次
+            const activeShift = shifts.find(s => !s.endTime);
+            if (activeShift) {
+                return { success: false, message: `已有活躍班次: ${activeShift.employee} (${formatTime(activeShift.startTime)})` };
+            }
+
+            const newShift = {
+                id: Date.now(),
+                employee: employee,
+                startTime: new Date().toISOString(),
+                endTime: null,
+                packages: []
+            };
+
+            shifts.push(newShift);
+            saveShifts(shifts);
+            updateShiftStatus();
+            return { success: true, message: `${employee} 上班了！` };
+        }
+
+        function endShift() {
+            const shifts = getAllShifts();
+            const activeShift = shifts.find(s => !s.endTime);
+
+            if (!activeShift) {
+                return { success: false, message: '沒有活躍班次' };
+            }
+
+            activeShift.endTime = new Date().toISOString();
+            saveShifts(shifts);
+            updateShiftStatus();
+            return { success: true, message: `${activeShift.employee} 下班了！班次結束。` };
+        }
+
+        function updateShiftStatus() {
+            const activeShift = getActiveShift();
+            const statusText = document.getElementById('shiftStatusText');
+            const employeeText = document.getElementById('shiftEmployeeText');
+            const startTimeText = document.getElementById('shiftStartTimeText');
+
+            if (activeShift) {
+                statusText.textContent = '進行中 ✓';
+                employeeText.textContent = activeShift.employee;
+                startTimeText.textContent = formatTime(activeShift.startTime);
+            } else {
+                statusText.textContent = '未上班';
+                employeeText.textContent = '-';
+                startTimeText.textContent = '-';
+            }
+        }
+
+        function isEmployeeCode(text) {
+            // 員工代碼通常是短文本，如 laude01, laude02 等（長度 < 15）
+            // 包裹 QR 碼通常是長的 TW 開頭的編號（長度 > 15）
+            return text.length <= 15 && !text.toUpperCase().startsWith('TW');
+        }
+
         function getAllRecords() {
             const data = localStorage.getItem(STORAGE_KEY);
             return data ? JSON.parse(data) : [];
@@ -1015,10 +1151,13 @@
         function addRecord(waybill, status) {
             const records = getAllRecords();
             const timestamp = new Date();
+            const activeShift = getActiveShift();
+            const operator = activeShift ? activeShift.employee : '未指定';
 
             records.push({
                 id: Date.now(),
                 waybill: waybill.trim(),
+                operator: operator,
                 status: status,
                 timestamp: timestamp.toISOString(),
                 timeDisplay: formatTime(timestamp)
@@ -1026,7 +1165,7 @@
 
             saveRecords(records);
             const statusText = status === 'start' ? t('statusStart') : t('statusComplete');
-            showSuccessMessage(`${t('recordedMsg')}: ${waybill} (${statusText})`);
+            showSuccessMessage(`${t('recordedMsg')}: ${waybill} (${statusText}) - ${operator}`);
             clearInput();
         }
 
@@ -1079,21 +1218,44 @@
         }
 
         function recordStart() {
-            const waybill = document.getElementById('waybillNumber').value.trim();
-            if (!waybill) {
+            const input = document.getElementById('waybillNumber').value.trim();
+            if (!input) {
                 alert(t('pleaseInput'));
                 return;
             }
-            addRecord(waybill, 'start');
+
+            // 檢查是否是員工代碼
+            if (isEmployeeCode(input)) {
+                const result = startShift(input);
+                showSuccessMessage(result.message);
+                clearInput();
+                return;
+            }
+
+            // 否則記錄包裹開始
+            addRecord(input, 'start');
         }
 
         function recordComplete() {
-            const waybill = document.getElementById('waybillNumber').value.trim();
-            if (!waybill) {
+            const input = document.getElementById('waybillNumber').value.trim();
+            if (!input) {
                 alert(t('pleaseInput'));
                 return;
             }
-            addRecord(waybill, 'complete');
+
+            // 檢查是否是員工代碼（下班）
+            if (isEmployeeCode(input)) {
+                const activeShift = getActiveShift();
+                if (activeShift && activeShift.employee === input) {
+                    const result = endShift();
+                    showSuccessMessage(result.message);
+                    clearInput();
+                    return;
+                }
+            }
+
+            // 否則記錄包裹完成
+            addRecord(input, 'complete');
         }
 
         function showSuccessMessage(msg) {
@@ -1695,6 +1857,98 @@
             showSuccessMessage(`${t('exportSuccess')} ${filteredRecords.length} ${t('exportNotice')}`);
         }
 
+        function showShiftStats() {
+            const shifts = getAllShifts();
+            const statsDiv = document.getElementById('analyticsStatsContainer');
+
+            if (shifts.length === 0) {
+                statsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p>未有班次記錄</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div style="overflow-x: auto;">';
+            html += `<table style="width: 100%; border-collapse: collapse;">`;
+            html += `<thead><tr style="background: #f5f5f5;">`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">👤 員工</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">上班時間</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">下班時間</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">🕐 班次時長</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">📦 包裹數</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">✓ 完成數</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">⏳ 工作時間</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">🛑 空閒時間</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">📊 效率</th>`;
+            html += `</tr></thead><tbody>`;
+
+            const allRecords = getAllRecords();
+
+            shifts.forEach((shift, index) => {
+                const startTime = new Date(shift.startTime);
+                const endTime = shift.endTime ? new Date(shift.endTime) : new Date();
+                const shiftDuration = (endTime - startTime) / 1000; // 秒
+
+                // 找這個班次內的所有包裹
+                const shiftStart = new Date(shift.startTime).getTime();
+                const shiftEnd = shift.endTime ? new Date(shift.endTime).getTime() : Date.now();
+
+                const shiftRecords = allRecords.filter(r => {
+                    const recordTime = new Date(r.timestamp).getTime();
+                    return r.operator === shift.employee && recordTime >= shiftStart && recordTime <= shiftEnd;
+                });
+
+                const startRecords = shiftRecords.filter(r => r.status === 'start');
+                const completeRecords = shiftRecords.filter(r => r.status === 'complete');
+
+                // 計算工作時間和空閒時間
+                let workDuration = 0;
+                const recordTimes = shiftRecords.map(r => new Date(r.timestamp).getTime()).sort((a, b) => a - b);
+
+                // 計算包裹之間的時間（工作時間）
+                for (let i = 0; i < recordTimes.length - 1; i++) {
+                    workDuration += (recordTimes[i + 1] - recordTimes[i]) / 1000;
+                }
+
+                const idleDuration = shiftDuration - workDuration;
+                const efficiency = shiftDuration > 0 ? ((workDuration / shiftDuration) * 100).toFixed(1) : 0;
+
+                html += `<tr style="border-bottom: 1px solid #eee;">`;
+                html += `<td style="padding: 12px;"><strong>${shift.employee}</strong></td>`;
+                html += `<td style="padding: 12px;">${formatTime(shift.startTime)}</td>`;
+                html += `<td style="padding: 12px;">${shift.endTime ? formatTime(shift.endTime) : '<span style="color: #4CAF50; font-weight: 600;">進行中</span>'}</td>`;
+                html += `<td style="padding: 12px; text-align: center;">${formatDuration(shiftDuration)}</td>`;
+                html += `<td style="padding: 12px; text-align: center;"><span style="background: #667eea; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">${startRecords.length}</span></td>`;
+                html += `<td style="padding: 12px; text-align: center;"><span style="background: #4CAF50; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">${completeRecords.length}</span></td>`;
+                html += `<td style="padding: 12px; text-align: center; color: #2196F3; font-weight: 600;">${formatDuration(workDuration)}</td>`;
+                html += `<td style="padding: 12px; text-align: center; color: #FF9800; font-weight: 600;">${formatDuration(idleDuration)}</td>`;
+                html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: ${efficiency > 70 ? '#4CAF50' : efficiency > 50 ? '#FF9800' : '#f44336'}">${efficiency}%</td>`;
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            html += '</div>';
+
+            statsDiv.innerHTML = html;
+        }
+
+        function clearShiftData() {
+            if (confirm('確定要清空所有班次數據嗎？')) {
+                if (confirm('再確認一次？此操作無法撤銷！')) {
+                    localStorage.removeItem(SHIFT_KEY);
+                    updateShiftStatus();
+                    showSuccessMessage('✓ 班次數據已清空');
+                    document.getElementById('analyticsStatsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <p>未有班次記錄</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
         function updatePlaceholders() {
             const waybillInput = document.getElementById('waybillNumber');
             const queryInput = document.getElementById('waybillInput');
@@ -1904,6 +2158,7 @@
         function initApp() {
             initLanguage();
             loadAndDisplayRecords();
+            updateShiftStatus();
 
             // Set default date to today for analytics
             const today = new Date().toISOString().split('T')[0];
