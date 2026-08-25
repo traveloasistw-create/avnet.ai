@@ -506,6 +506,7 @@
 </head>
 <body>
     <div class="language-switch">
+        <button id="oneDriveToggle" class="admin-button" onclick="connectOneDrive()" style="margin-right: 10px; padding: 8px 12px; background: rgba(0,120,215,0.3); color: white; border: 2px solid rgba(0,120,215,0.6); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">☁️ OneDrive</button>
         <button id="adminToggle" class="admin-button" onclick="showAdminLogin()" style="margin-right: 10px; padding: 8px 12px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">🔐 Admin</button>
         <select id="languageSelect" onchange="setLanguage(this.value)">
             <option value="zh-TW">繁體中文</option>
@@ -795,6 +796,11 @@
         let packageStartTime = null;
         let packageTimerInterval = null;
         let shiftTimerInterval = null;
+
+        // OneDrive 同步變數
+        let oneDriveHandle = null;
+        let isOneDriveSyncEnabled = false;
+        let syncCheckInterval = null;
 
         const translations = {
             'zh-TW': {
@@ -2446,11 +2452,199 @@
             }
         }
 
+        async function connectOneDrive() {
+            if (isOneDriveSyncEnabled) {
+                // 斷開連接
+                isOneDriveSyncEnabled = false;
+                if (syncCheckInterval) {
+                    clearInterval(syncCheckInterval);
+                }
+                oneDriveHandle = null;
+                updateOneDriveStatus();
+                showSuccessMessage('✓ 已斷開 OneDrive 連接');
+                return;
+            }
+
+            // 檢查瀏覽器是否支持 File System Access API
+            if (!window.showDirectoryPicker) {
+                alert('⚠️ 你的瀏覽器不支持 OneDrive 連接功能\n\n建議使用：Chrome、Edge 等現代瀏覽器\n\n或繼續使用導出/導入功能');
+                return;
+            }
+
+            try {
+                // 請求用戶選擇 OneDrive 文件夾
+                const handle = await window.showDirectoryPicker();
+
+                // 驗證是否是正確的文件夾
+                const fileName = handle.name;
+                if (!fileName.includes('包貨') && !fileName.includes('包货')) {
+                    const confirmed = confirm(`選擇的文件夾: ${fileName}\n\n是否確認使用此文件夾?\n\n建議路徑: C:\\Users\\Aldon\\OneDrive\\包貨管理系統`);
+                    if (!confirmed) return;
+                }
+
+                oneDriveHandle = handle;
+                isOneDriveSyncEnabled = true;
+                updateOneDriveStatus();
+                showSuccessMessage(`✓ 已連接 OneDrive: ${fileName}`);
+
+                // 啟動自動同步
+                startOneDriveSync();
+
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    alert(`❌ 連接失敗: ${error.message}`);
+                }
+            }
+        }
+
+        function updateOneDriveStatus() {
+            const oneDriveBtn = document.getElementById('oneDriveToggle');
+            if (isOneDriveSyncEnabled) {
+                oneDriveBtn.textContent = '☁️ OneDrive (已連接)';
+                oneDriveBtn.style.background = 'rgba(76, 175, 80, 0.5)';
+                oneDriveBtn.style.borderColor = 'rgba(76, 175, 80, 0.8)';
+            } else {
+                oneDriveBtn.textContent = '☁️ OneDrive';
+                oneDriveBtn.style.background = 'rgba(0,120,215,0.3)';
+                oneDriveBtn.style.borderColor = 'rgba(0,120,215,0.6)';
+            }
+        }
+
+        function startOneDriveSync() {
+            // 立即同步一次
+            syncWithOneDrive();
+
+            // 每 10 秒檢查一次
+            if (syncCheckInterval) clearInterval(syncCheckInterval);
+            syncCheckInterval = setInterval(syncWithOneDrive, 10000);
+        }
+
+        async function syncWithOneDrive() {
+            if (!isOneDriveSyncEnabled || !oneDriveHandle) return;
+
+            try {
+                // 自動保存當前數據到 OneDrive
+                const records = getAllRecords();
+                const shifts = getAllShifts();
+                const today = new Date().toISOString().split('T')[0];
+                const fileName = `package_manager_${today}.json`;
+
+                const exportData = {
+                    exportDate: new Date().toISOString(),
+                    computerName: getComputerIdentifier(),
+                    version: '1.0',
+                    records: records,
+                    shifts: shifts,
+                    language: currentLanguage
+                };
+
+                const fileHandle = await oneDriveHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable({ keepExistingData: false });
+                await writable.write(JSON.stringify(exportData, null, 2));
+                await writable.close();
+
+                // 檢查其他電腦的文件
+                await checkForRemoteFiles();
+
+            } catch (error) {
+                console.error('OneDrive sync error:', error);
+            }
+        }
+
+        async function checkForRemoteFiles() {
+            if (!isOneDriveSyncEnabled || !oneDriveHandle) return;
+
+            try {
+                const currentComputerId = getComputerIdentifier();
+                let latestRemoteFile = null;
+                let latestRemoteData = null;
+
+                // 遍歷文件夾中的所有 JSON 文件
+                for await (const entry of oneDriveHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.json') && entry.name.startsWith('package_manager_')) {
+                        const file = await entry.getFile();
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+
+                        // 不導入自己電腦的文件
+                        if (data.computerName && data.computerName !== currentComputerId) {
+                            if (!latestRemoteFile || new Date(data.exportDate) > new Date(latestRemoteData.exportDate)) {
+                                latestRemoteFile = entry.name;
+                                latestRemoteData = data;
+                            }
+                        }
+                    }
+                }
+
+                // 如果找到其他電腦的最新文件，自動合併
+                if (latestRemoteData) {
+                    autoMergeRemoteData(latestRemoteData);
+                }
+
+            } catch (error) {
+                console.error('Error checking remote files:', error);
+            }
+        }
+
+        function autoMergeRemoteData(remoteData) {
+            const currentRecords = getAllRecords();
+            const currentShifts = getAllShifts();
+
+            // 檢查是否有新的記錄
+            const remoteIds = new Set(remoteData.records.map(r => r.id));
+            const currentIds = new Set(currentRecords.map(r => r.id));
+
+            let hasNewRecords = false;
+            for (const id of remoteIds) {
+                if (!currentIds.has(id)) {
+                    hasNewRecords = true;
+                    break;
+                }
+            }
+
+            if (hasNewRecords) {
+                // 合併記錄（避免重複）
+                const mergedRecords = [...currentRecords];
+                const mergedIds = new Set(mergedRecords.map(r => r.id));
+
+                remoteData.records.forEach(remoteRecord => {
+                    if (!mergedIds.has(remoteRecord.id)) {
+                        mergedRecords.push(remoteRecord);
+                    }
+                });
+
+                // 合併班次（避免重複）
+                const mergedShifts = [...currentShifts];
+                const mergedShiftIds = new Set(mergedShifts.map(s => s.id));
+
+                remoteData.shifts.forEach(remoteShift => {
+                    if (!mergedShiftIds.has(remoteShift.id)) {
+                        mergedShifts.push(remoteShift);
+                    }
+                });
+
+                saveRecords(mergedRecords);
+                saveShifts(mergedShifts);
+                loadAndDisplayRecords();
+            }
+        }
+
+        function getComputerIdentifier() {
+            // 用本地存儲的計算機 ID（首次自動生成）
+            let computerId = localStorage.getItem('computerId');
+            if (!computerId) {
+                computerId = 'computer_' + Math.random().toString(36).substr(2, 9) + '_' + new Date().getTime();
+                localStorage.setItem('computerId', computerId);
+            }
+            return computerId;
+        }
+
         function initApp() {
             initLanguage();
             loadAndDisplayRecords();
             updateShiftStatus();
             updateAdminMode();
+            updateOneDriveStatus();
 
             // 如果有活躍班次，啟動班次計時器
             if (getActiveShift()) {
@@ -2489,6 +2683,13 @@
             document.getElementById('adminLoginModal').addEventListener('click', (e) => {
                 if (e.target.id === 'adminLoginModal') {
                     closeAdminModal();
+                }
+            });
+
+            // 頁面卸載時同步 OneDrive 數據
+            window.addEventListener('beforeunload', () => {
+                if (isOneDriveSyncEnabled) {
+                    syncWithOneDrive();
                 }
             });
         }
