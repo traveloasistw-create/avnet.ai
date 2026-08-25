@@ -157,6 +157,8 @@
         }
 
         input[type="text"],
+        input[type="date"],
+        input[type="time"],
         select {
             width: 100%;
             padding: 12px;
@@ -167,6 +169,8 @@
         }
 
         input[type="text"]:focus,
+        input[type="date"]:focus,
+        input[type="time"]:focus,
         select:focus {
             outline: none;
             border-color: #667eea;
@@ -516,6 +520,9 @@
             <button class="tab-button" onclick="switchTab('lookup')" data-i18n="lookupTab">
                 🔍 異常查詢系統
             </button>
+            <button class="tab-button" onclick="switchTab('analytics')" data-i18n="analyticsTab">
+                📅 數據查詢
+            </button>
         </div>
 
         <!-- 标签页1：扫码输入系统 -->
@@ -653,6 +660,57 @@
                 <div id="resultsContainer"></div>
             </div>
         </div>
+
+        <!-- 标签页4：数据查询系统 -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="main-grid">
+                <div class="card">
+                    <h2 data-i18n="analyticsTitle">📅 數據查詢</h2>
+
+                    <div class="info-box" data-i18n="analyticsTip">
+                        💡 按日期和時間範圍查詢包貨記錄及員工統計
+                    </div>
+
+                    <div class="input-group">
+                        <label for="analyticsDate" data-i18n="selectDate">選擇日期</label>
+                        <input type="date" id="analyticsDate">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="analyticsTimeStart" data-i18n="startTime">開始時間 (選填)</label>
+                        <input type="time" id="analyticsTimeStart">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="analyticsTimeEnd" data-i18n="endTime">結束時間 (選填)</label>
+                        <input type="time" id="analyticsTimeEnd">
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-search" onclick="filterAnalytics()" data-i18n="filterBtn">查詢</button>
+                        <button class="btn-export" onclick="exportAnalyticsData()" data-i18n="exportBtn">📥 導出</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 data-i18n="analyticsStats">📊 統計數據</h2>
+                    <div id="analyticsStatsContainer">
+                        <div class="empty-state">
+                            <p data-i18n="selectDataTip">選擇日期範圍並點擊查詢</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h2 data-i18n="filteredResults">📋 查詢結果</h2>
+                    <div id="analyticsResultsContainer">
+                        <div class="empty-state">
+                            <p data-i18n="noData">未有數據</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -722,7 +780,24 @@
                 confirmClear2: '再確認一次？所有掃碼記錄都會被刪除！',
                 clearSuccess: '✓ 所有資料已清空',
                 recordedMsg: '✓ 已記錄',
-                pleaseInput: '請掃描或輸入寄件編號'
+                pleaseInput: '請掃描或輸入寄件編號',
+                analyticsTab: '📅 數據查詢',
+                analyticsTitle: '📅 數據查詢',
+                analyticsTip: '💡 按日期和時間範圍查詢包貨記錄及員工統計',
+                selectDate: '選擇日期',
+                startTime: '開始時間 (選填)',
+                endTime: '結束時間 (選填)',
+                filterBtn: '查詢',
+                analyticsStats: '📊 統計數據',
+                filteredResults: '📋 查詢結果',
+                selectDataTip: '選擇日期範圍並點擊查詢',
+                noData: '未有數據',
+                employeeCol: '👤 員工',
+                itemsCol: '件數',
+                avgTimeCol: '平均耗時',
+                totalTimeCol: '總耗時',
+                noEmployee: '未指定',
+                noResults: '查詢範圍內未有記錄'
             },
             'en': {
                 title: '📦 Package Management System',
@@ -786,7 +861,24 @@
                 confirmClear2: 'Confirm again? All scan records will be deleted!',
                 clearSuccess: '✓ All data cleared',
                 recordedMsg: '✓ Recorded',
-                pleaseInput: 'Please scan or enter tracking number'
+                pleaseInput: 'Please scan or enter tracking number',
+                analyticsTab: '📅 Analytics',
+                analyticsTitle: '📅 Data Query',
+                analyticsTip: '💡 Query packing records and employee statistics by date and time range',
+                selectDate: 'Select Date',
+                startTime: 'Start Time (Optional)',
+                endTime: 'End Time (Optional)',
+                filterBtn: 'Query',
+                analyticsStats: '📊 Statistics',
+                filteredResults: '📋 Results',
+                selectDataTip: 'Select date range and click Query',
+                noData: 'No Data',
+                employeeCol: '👤 Employee',
+                itemsCol: 'Items',
+                avgTimeCol: 'Avg Duration',
+                totalTimeCol: 'Total Duration',
+                noEmployee: 'Unassigned',
+                noResults: 'No records in selected range'
             },
             'id': {
                 title: '📦 Sistem Manajemen Paket',
@@ -850,7 +942,24 @@
                 confirmClear2: 'Konfirmasi lagi? Semua catatan pindai akan dihapus!',
                 clearSuccess: '✓ Semua data dihapus',
                 recordedMsg: '✓ Tercatat',
-                pleaseInput: 'Silakan pindai atau masukkan nomor pelacakan'
+                pleaseInput: 'Silakan pindai atau masukkan nomor pelacakan',
+                analyticsTab: '📅 Analitik',
+                analyticsTitle: '📅 Kueri Data',
+                analyticsTip: '💡 Kueri catatan pengemasan dan statistik karyawan berdasarkan tanggal dan rentang waktu',
+                selectDate: 'Pilih Tanggal',
+                startTime: 'Waktu Mulai (Opsional)',
+                endTime: 'Waktu Selesai (Opsional)',
+                filterBtn: 'Kueri',
+                analyticsStats: '📊 Statistik',
+                filteredResults: '📋 Hasil',
+                selectDataTip: 'Pilih rentang tanggal dan klik Kueri',
+                noData: 'Tidak Ada Data',
+                employeeCol: '👤 Karyawan',
+                itemsCol: 'Barang',
+                avgTimeCol: 'Durasi Rata-rata',
+                totalTimeCol: 'Total Durasi',
+                noEmployee: 'Tidak Ditugaskan',
+                noResults: 'Tidak ada catatan dalam rentang yang dipilih'
             }
         };
 
@@ -886,6 +995,8 @@
 
             if (tabName === 'input') {
                 setTimeout(() => document.getElementById('waybillNumber').focus(), 100);
+            } else if (tabName === 'analytics') {
+                setTimeout(() => document.getElementById('analyticsDate').focus(), 100);
             } else {
                 setTimeout(() => document.getElementById('waybillInput').focus(), 100);
             }
@@ -1287,6 +1398,303 @@
             resultsDiv.innerHTML = html;
         }
 
+        function filterAnalytics() {
+            const dateStr = document.getElementById('analyticsDate').value;
+            const startTimeStr = document.getElementById('analyticsTimeStart').value;
+            const endTimeStr = document.getElementById('analyticsTimeEnd').value;
+
+            if (!dateStr) {
+                alert(t('selectDate'));
+                return;
+            }
+
+            const allRecords = getAllRecords();
+            const selectedDate = new Date(dateStr);
+            const selectedDateStr = selectedDate.toISOString().split('T')[0];
+
+            // Filter records by date
+            let filteredRecords = allRecords.filter(r => {
+                const recordDate = new Date(r.timestamp).toISOString().split('T')[0];
+                return recordDate === selectedDateStr;
+            });
+
+            // If time range is specified, apply additional filtering
+            if (startTimeStr && endTimeStr) {
+                const [startHour, startMin] = startTimeStr.split(':').map(Number);
+                const [endHour, endMin] = endTimeStr.split(':').map(Number);
+
+                filteredRecords = filteredRecords.filter(r => {
+                    const time = new Date(r.timestamp);
+                    const hours = time.getHours();
+                    const minutes = time.getMinutes();
+
+                    const startTotalMin = startHour * 60 + startMin;
+                    const endTotalMin = endHour * 60 + endMin;
+                    const recordTotalMin = hours * 60 + minutes;
+
+                    return recordTotalMin >= startTotalMin && recordTotalMin <= endTotalMin;
+                });
+            }
+
+            // Display results
+            displayAnalyticsResults(filteredRecords, selectedDateStr, startTimeStr, endTimeStr);
+
+            // Calculate and display statistics
+            displayAnalyticsStats(filteredRecords);
+        }
+
+        function displayAnalyticsResults(records, selectedDate, startTime, endTime) {
+            const resultsDiv = document.getElementById('analyticsResultsContainer');
+
+            if (records.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p>${t('noResults')}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group records by waybill and create pairs
+            const waybillMap = {};
+            records.forEach(r => {
+                if (!waybillMap[r.waybill]) {
+                    waybillMap[r.waybill] = [];
+                }
+                waybillMap[r.waybill].push(r);
+            });
+
+            let html = `<table style="width: 100%; border-collapse: collapse;">`;
+            html += `<thead><tr style="background: #f5f5f5;">`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('waybillCol')}</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('employeeCol')}</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('startTimeField')}</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('completeTimeField')}</th>`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('durationField')}</th>`;
+            html += `</tr></thead><tbody>`;
+
+            Object.keys(waybillMap).sort().forEach(waybill => {
+                const recordsForWaybill = waybillMap[waybill].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                const startRecord = recordsForWaybill.find(r => r.status === 'start');
+                const completeRecord = recordsForWaybill.find(r => r.status === 'complete');
+
+                if (startRecord) {
+                    const employee = startRecord.operator || t('noEmployee');
+                    const startTime = formatTime(startRecord.timestamp);
+
+                    let completeTime = '-';
+                    let duration = t('onGoing');
+
+                    if (completeRecord) {
+                        completeTime = formatTime(completeRecord.timestamp);
+                        const durationSec = (new Date(completeRecord.timestamp) - new Date(startRecord.timestamp)) / 1000;
+                        duration = formatDuration(durationSec);
+                    }
+
+                    html += `<tr style="border-bottom: 1px solid #eee;">`;
+                    html += `<td style="padding: 12px;"><code>${waybill}</code></td>`;
+                    html += `<td style="padding: 12px;"><strong>${employee}</strong></td>`;
+                    html += `<td style="padding: 12px;">${startTime}</td>`;
+                    html += `<td style="padding: 12px;">${completeTime}</td>`;
+                    html += `<td style="padding: 12px; font-weight: 600; color: #667eea;">${duration}</td>`;
+                    html += `</tr>`;
+                }
+            });
+
+            html += `</tbody></table>`;
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayAnalyticsStats(records) {
+            const statsDiv = document.getElementById('analyticsStatsContainer');
+
+            if (records.length === 0) {
+                statsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <p>${t('noData')}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate statistics by employee
+            const employeeStats = {};
+            const waybillMap = {};
+
+            records.forEach(r => {
+                if (!waybillMap[r.waybill]) {
+                    waybillMap[r.waybill] = [];
+                }
+                waybillMap[r.waybill].push(r);
+            });
+
+            // Process pairs
+            Object.keys(waybillMap).forEach(waybill => {
+                const recordsForWaybill = waybillMap[waybill].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const startRecord = recordsForWaybill.find(r => r.status === 'start');
+                const completeRecord = recordsForWaybill.find(r => r.status === 'complete');
+
+                if (startRecord && completeRecord) {
+                    const employee = startRecord.operator || t('noEmployee');
+                    if (!employeeStats[employee]) {
+                        employeeStats[employee] = {
+                            items: 0,
+                            totalDuration: 0,
+                            count: 0
+                        };
+                    }
+
+                    const durationSec = (new Date(completeRecord.timestamp) - new Date(startRecord.timestamp)) / 1000;
+                    employeeStats[employee].items++;
+                    employeeStats[employee].totalDuration += durationSec;
+                    employeeStats[employee].count++;
+                }
+            });
+
+            // Display stats
+            let html = '<div style="overflow-x: auto;">';
+            html += `<table style="width: 100%; border-collapse: collapse;">`;
+            html += `<thead><tr style="background: #f5f5f5;">`;
+            html += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">${t('employeeCol')}</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">${t('itemsCol')}</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">${t('avgTimeCol')}</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">${t('totalTimeCol')}</th>`;
+            html += `</tr></thead><tbody>`;
+
+            Object.keys(employeeStats).sort().forEach(employee => {
+                const stats = employeeStats[employee];
+                const avgDuration = stats.totalDuration / stats.count;
+
+                html += `<tr style="border-bottom: 1px solid #eee;">`;
+                html += `<td style="padding: 12px;"><strong>${employee}</strong></td>`;
+                html += `<td style="padding: 12px; text-align: center;"><span style="background: #667eea; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">${stats.items}</span></td>`;
+                html += `<td style="padding: 12px; text-align: center;">${formatDuration(avgDuration)}</td>`;
+                html += `<td style="padding: 12px; text-align: center;">${formatDuration(stats.totalDuration)}</td>`;
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            html += '</div>';
+
+            statsDiv.innerHTML = html;
+        }
+
+        function exportAnalyticsData() {
+            const dateStr = document.getElementById('analyticsDate').value;
+            if (!dateStr) {
+                alert(t('selectDate'));
+                return;
+            }
+
+            const startTimeStr = document.getElementById('analyticsTimeStart').value;
+            const endTimeStr = document.getElementById('analyticsTimeEnd').value;
+
+            const allRecords = getAllRecords();
+            const selectedDate = new Date(dateStr);
+            const selectedDateStr = selectedDate.toISOString().split('T')[0];
+
+            let filteredRecords = allRecords.filter(r => {
+                const recordDate = new Date(r.timestamp).toISOString().split('T')[0];
+                return recordDate === selectedDateStr;
+            });
+
+            if (startTimeStr && endTimeStr) {
+                const [startHour, startMin] = startTimeStr.split(':').map(Number);
+                const [endHour, endMin] = endTimeStr.split(':').map(Number);
+
+                filteredRecords = filteredRecords.filter(r => {
+                    const time = new Date(r.timestamp);
+                    const hours = time.getHours();
+                    const minutes = time.getMinutes();
+
+                    const startTotalMin = startHour * 60 + startMin;
+                    const endTotalMin = endHour * 60 + endMin;
+                    const recordTotalMin = hours * 60 + minutes;
+
+                    return recordTotalMin >= startTotalMin && recordTotalMin <= endTotalMin;
+                });
+            }
+
+            if (filteredRecords.length === 0) {
+                alert(t('noResults'));
+                return;
+            }
+
+            // Prepare data for export
+            const waybillMap = {};
+            filteredRecords.forEach(r => {
+                if (!waybillMap[r.waybill]) {
+                    waybillMap[r.waybill] = [];
+                }
+                waybillMap[r.waybill].push(r);
+            });
+
+            let headerRow;
+            if (currentLanguage === 'en') {
+                headerRow = ['Tracking #', 'Employee', 'Start Time', 'Complete Time', 'Duration'];
+            } else if (currentLanguage === 'id') {
+                headerRow = ['Nomor Pelacakan', 'Karyawan', 'Waktu Mulai', 'Waktu Selesai', 'Durasi'];
+            } else {
+                headerRow = ['寄件編號', '員工', '開始時間', '完成時間', '耗時'];
+            }
+
+            const data = [headerRow];
+
+            Object.keys(waybillMap).sort().forEach(waybill => {
+                const recordsForWaybill = waybillMap[waybill].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const startRecord = recordsForWaybill.find(r => r.status === 'start');
+                const completeRecord = recordsForWaybill.find(r => r.status === 'complete');
+
+                if (startRecord) {
+                    const employee = startRecord.operator || t('noEmployee');
+                    const startTime = formatTime(startRecord.timestamp);
+                    const completeTime = completeRecord ? formatTime(completeRecord.timestamp) : '-';
+
+                    let duration = t('onGoing');
+                    if (completeRecord) {
+                        const durationSec = (new Date(completeRecord.timestamp) - new Date(startRecord.timestamp)) / 1000;
+                        duration = formatDuration(durationSec);
+                    }
+
+                    data.push([waybill, employee, startTime, completeTime, duration]);
+                }
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+
+            let sheetName;
+            if (currentLanguage === 'en') {
+                sheetName = 'Analytics Report';
+            } else if (currentLanguage === 'id') {
+                sheetName = 'Laporan Analitik';
+            } else {
+                sheetName = '數據查詢報告';
+            }
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 12 }
+            ];
+
+            let fileName;
+            if (currentLanguage === 'en') {
+                fileName = `analytics_${dateStr}.xlsx`;
+            } else if (currentLanguage === 'id') {
+                fileName = `analitik_${dateStr}.xlsx`;
+            } else {
+                fileName = `數據查詢_${dateStr}.xlsx`;
+            }
+            XLSX.writeFile(wb, fileName);
+
+            showSuccessMessage(`${t('exportSuccess')} ${filteredRecords.length} ${t('exportNotice')}`);
+        }
+
         function updatePlaceholders() {
             const waybillInput = document.getElementById('waybillNumber');
             const queryInput = document.getElementById('waybillInput');
@@ -1496,6 +1904,10 @@
         function initApp() {
             initLanguage();
             loadAndDisplayRecords();
+
+            // Set default date to today for analytics
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('analyticsDate').value = today;
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'F1') {
