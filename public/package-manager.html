@@ -618,6 +618,15 @@
                         <button class="btn-export" onclick="exportToExcel()" style="width: 100%; margin-bottom: 10px;" data-i18n="exportBtn">
                             📥 導出 Excel
                         </button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <button class="btn-export" onclick="exportToJSON()" style="background: #FF6F00;">
+                                💾 導出 JSON (OneDrive)
+                            </button>
+                            <button class="btn-search" onclick="triggerImportJSON()" style="background: #2196F3;">
+                                📂 導入 JSON
+                            </button>
+                        </div>
+                        <input type="file" id="jsonImportInput" accept=".json" style="display: none;" onchange="importFromJSON(event)">
                         <button class="btn-clear" onclick="clearAllData()" style="width: 100%;" data-i18n="clearBtn">
                             🗑️ 清空所有資料
                         </button>
@@ -1493,6 +1502,84 @@
                 const filtered = records.filter(r => r.id !== id);
                 saveRecords(filtered);
             }
+        }
+
+        function exportToJSON() {
+            const records = getAllRecords();
+            const shifts = getAllShifts();
+
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                version: '1.0',
+                records: records,
+                shifts: shifts,
+                language: currentLanguage
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `package_manager_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showSuccessMessage(`✓ 已導出 ${records.length} 條記錄到 JSON`);
+        }
+
+        function triggerImportJSON() {
+            document.getElementById('jsonImportInput').click();
+        }
+
+        function importFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+
+                    if (!importData.records || !Array.isArray(importData.records)) {
+                        alert('❌ 無效的 JSON 格式');
+                        return;
+                    }
+
+                    // 詢問用戶是否覆蓋
+                    const currentRecords = getAllRecords();
+                    const message = `找到 ${importData.records.length} 條記錄和 ${importData.shifts ? importData.shifts.length : 0} 個班次\n\n選擇操作:\n- 確定 = 覆蓋現有數據\n- 取消 = 合併數據`;
+
+                    if (confirm(message)) {
+                        // 覆蓋模式
+                        saveRecords(importData.records);
+                        if (importData.shifts) {
+                            saveShifts(importData.shifts);
+                        }
+                        showSuccessMessage(`✓ 已導入 ${importData.records.length} 條記錄（覆蓋模式）`);
+                    } else {
+                        // 合併模式
+                        const mergedRecords = [...currentRecords, ...importData.records];
+                        saveRecords(mergedRecords);
+                        if (importData.shifts) {
+                            const currentShifts = getAllShifts();
+                            const mergedShifts = [...currentShifts, ...importData.shifts];
+                            saveShifts(mergedShifts);
+                        }
+                        showSuccessMessage(`✓ 已合併 ${importData.records.length} 條記錄`);
+                    }
+
+                    loadAndDisplayRecords();
+                    updateShiftStatus();
+                    document.getElementById('jsonImportInput').value = '';
+
+                } catch (error) {
+                    alert(`❌ 導入失敗: ${error.message}`);
+                }
+            };
+            reader.readAsText(file);
         }
 
         function exportToExcel() {
