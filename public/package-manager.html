@@ -563,8 +563,8 @@
         </header>
 
         <div class="tabs">
-            <button class="tab-button active" onclick="switchTab('input')" data-i18n="scanTab">
-                📥 掃碼輸入系統
+            <button class="tab-button active" onclick="switchTab('input')" data-i18n="dashboardTab">
+                📊 儀表板
             </button>
             <button class="tab-button" onclick="switchTab('import')" data-i18n="importTab">
                 📥 批量導入
@@ -577,121 +577,53 @@
             </button>
         </div>
 
-        <!-- 标签页1：扫码输入系统 -->
+        <!-- 标签页1：仪表板 -->
         <div id="input-tab" class="tab-content active">
             <div class="main-grid">
+                <!-- 昨天統計 -->
                 <div class="card">
-                    <h2 data-i18n="scanInput">🔍 掃碼輸入</h2>
-
-                    <div class="info-box" data-i18n="scanTip">
-                        💡 掃碼槍掃QR碼 → 自動記錄寄件號和時間
-                    </div>
-
-                    <div id="successMessage"></div>
-
-                    <!-- 實時計時器 -->
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
-                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">⏱️ 當前包裹耗時</div>
-                        <div id="packageTimer" style="font-size: 3.5em; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 5px;">00:00</div>
-                        <div style="font-size: 0.85em; opacity: 0.8; margin-top: 10px;">班次時長: <span id="shiftTimerDisplay">00:00</span></div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="operatorCode">👤 員工代碼</label>
-                        <input type="text" id="operatorCode" placeholder="例如: laude01">
-                    </div>
-
-                    <div style="padding: 12px; background: #e3f2fd; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2196F3;">
-                        <div style="font-weight: 600; color: #1565c0; margin-bottom: 8px;">🕐 班次狀態</div>
-                        <div id="shiftStatus" style="font-size: 0.95em; color: #0d47a1; line-height: 1.6;">
-                            <div>狀態: <span id="shiftStatusText">未上班</span></div>
-                            <div>員工: <span id="shiftEmployeeText">-</span></div>
-                            <div>上班時間: <span id="shiftStartTimeText">-</span></div>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="waybillNumber" data-i18n="trackingLabel">寄件編號 (Tracking Number)</label>
-                        <input type="text" id="waybillNumber" data-placeholder="trackingPlaceholder" placeholder="例如: tw2627552652668z" autofocus>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="status" data-i18n="statusLabel">包貨狀態</label>
-                        <select id="status">
-                            <option value="" data-i18n="statusSelect">-- 選擇狀態 --</option>
-                            <option value="start" data-i18n="statusStart">📍 開始包貨</option>
-                            <option value="complete" data-i18n="statusComplete">✓ 完成包貨</option>
-                        </select>
-                    </div>
-
-                    <div class="button-group">
-                        <button class="btn-start" onclick="recordStart()" data-i18n="btnStart">開始 (F1)</button>
-                        <button class="btn-complete" onclick="recordComplete()" data-i18n="btnComplete">完成 (F2)</button>
-                    </div>
-
+                    <h2>📅 昨天</h2>
                     <div class="stats">
                         <div class="stat-box">
-                            <div class="number" id="totalRecords">0</div>
-                            <div class="label" data-i18n="totalRecords">總掃描次數</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="number" id="pairsCount">0</div>
-                            <div class="label" data-i18n="pairsCount">完成對數</div>
+                            <div class="number" id="yesterdayCount">0</div>
+                            <div class="label">件貨</div>
                         </div>
                     </div>
+                </div>
 
-                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                        <button class="btn-export" onclick="exportToExcel()" style="width: 100%; margin-bottom: 10px;" data-i18n="exportBtn">
+                <!-- 本周統計 -->
+                <div class="card">
+                    <h2>📆 本週</h2>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="number" id="weekCount">0</div>
+                            <div class="label">件貨</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 本月統計 -->
+                <div class="card">
+                    <h2>📊 本月</h2>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="number" id="monthCount">0</div>
+                            <div class="label">件貨</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 導入按鈕 -->
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h2>⚙️ 操作</h2>
+                    <div class="button-group">
+                        <button class="btn-search" onclick="switchTab('import')" style="flex: 1; background: #2196F3;">
+                            📥 批量導入數據
+                        </button>
+                        <button class="btn-export" onclick="exportToExcel()" style="flex: 1;">
                             📥 導出 Excel
                         </button>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                            <button class="btn-export" onclick="exportToJSON()" style="background: #FF6F00;">
-                                💾 導出 JSON (OneDrive)
-                            </button>
-                            <button class="btn-search" onclick="triggerImportJSON()" style="background: #2196F3;">
-                                📂 導入 JSON
-                            </button>
-                        </div>
-                        <input type="file" id="jsonImportInput" accept=".json" style="display: none;" onchange="importFromJSON(event)">
-                        <button class="btn-clear" onclick="clearAllData()" style="width: 100%;" data-i18n="clearBtn">
-                            🗑️ 清空所有資料
-                        </button>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h2 data-i18n="quickStats">📊 快速統計</h2>
-
-                    <div style="margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
-                        <div style="margin-bottom: 10px;">
-                            <strong data-i18n="todayData">📈 今日資料</strong>
-                        </div>
-                        <div style="font-size: 0.95em; color: #666; line-height: 1.8;">
-                            <div><span data-i18n="started">已開始</span>: <span id="startCount">0</span> 件</div>
-                            <div><span data-i18n="completed">已完成</span>: <span id="completeCount">0</span> 件</div>
-                            <div><span data-i18n="avgDuration">平均耗時</span>: <span id="avgDuration">-</span></div>
-                            <div><span data-i18n="maxDuration">最長耗時</span>: <span id="maxDuration">-</span></div>
-                            <div><span data-i18n="minDuration">最短耗時</span>: <span id="minDuration">-</span></div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px; border-left: 4px solid #FF9800;">
-                        <strong style="color: #e65100;" data-i18n="shortcuts">⚡ 快捷鍵</strong>
-                        <div style="font-size: 0.9em; color: #666; margin-top: 10px; line-height: 1.8;">
-                            <div><code>F1</code> = <span data-i18n="statusStart">📍 開始包貨</span></div>
-                            <div><code>F2</code> = <span data-i18n="statusComplete">✓ 完成包貨</span></div>
-                            <div><code>Ctrl+E</code> = <span data-i18n="exportBtn">📥 導出 Excel</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card records-container">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2 style="margin: 0;" data-i18n="recordsTable">📋 掃碼記錄</h2>
-                        <span style="color: #999; font-size: 0.9em;" id="recordCount">共 0 條記錄</span>
-                    </div>
-
-                    <div id="recordsTable"></div>
                 </div>
             </div>
         </div>
@@ -1545,6 +1477,53 @@
             displayRecordsTable(records);
         }
 
+        function updateDashboard() {
+            const pairs = calculatePairs();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 計算昨天的數據
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStart = yesterday.getTime();
+            const yesterdayEnd = today.getTime();
+
+            // 計算本周的數據（周一到今天）
+            const weekStart = new Date(today);
+            const day = weekStart.getDay();
+            const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+            weekStart.setDate(diff);
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(today);
+            weekEnd.setHours(23, 59, 59, 999);
+
+            // 計算本月的數據
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+
+            // 統計
+            const yesterdayPairs = pairs.filter(p => {
+                const pTime = p.completeTime.getTime();
+                return pTime >= yesterdayStart && pTime < yesterdayEnd;
+            });
+
+            const weekPairs = pairs.filter(p => {
+                const pTime = p.completeTime.getTime();
+                return pTime >= weekStart.getTime() && pTime <= weekEnd.getTime();
+            });
+
+            const monthPairs = pairs.filter(p => {
+                const pTime = p.completeTime.getTime();
+                return pTime >= monthStart.getTime() && pTime <= monthEnd.getTime();
+            });
+
+            // 更新顯示
+            document.getElementById('yesterdayCount').textContent = yesterdayPairs.length;
+            document.getElementById('weekCount').textContent = weekPairs.length;
+            document.getElementById('monthCount').textContent = monthPairs.length;
+        }
+
         function updateStats(records, pairs) {
             const startCount = records.filter(r => r.status === 'start').length;
             const completeCount = records.filter(r => r.status === 'complete').length;
@@ -1880,40 +1859,40 @@
             const startTimeStr = document.getElementById('analyticsTimeStart').value;
             const endTimeStr = document.getElementById('analyticsTimeEnd').value;
 
-            if (!dateStr) {
-                alert(t('selectDate'));
-                return;
-            }
-
             const allRecords = getAllRecords();
-            const selectedDate = new Date(dateStr);
-            const selectedDateStr = selectedDate.toISOString().split('T')[0];
+            let filteredRecords = allRecords;
 
-            // Filter records by date
-            let filteredRecords = allRecords.filter(r => {
-                const recordDate = new Date(r.timestamp).toISOString().split('T')[0];
-                return recordDate === selectedDateStr;
-            });
+            // 如果選擇了日期，按日期篩選
+            if (dateStr) {
+                const selectedDate = new Date(dateStr);
+                const selectedDateStr = selectedDate.toISOString().split('T')[0];
 
-            // If time range is specified, apply additional filtering
-            if (startTimeStr && endTimeStr) {
-                const [startHour, startMin] = startTimeStr.split(':').map(Number);
-                const [endHour, endMin] = endTimeStr.split(':').map(Number);
-
-                filteredRecords = filteredRecords.filter(r => {
-                    const time = new Date(r.timestamp);
-                    const hours = time.getHours();
-                    const minutes = time.getMinutes();
-
-                    const startTotalMin = startHour * 60 + startMin;
-                    const endTotalMin = endHour * 60 + endMin;
-                    const recordTotalMin = hours * 60 + minutes;
-
-                    return recordTotalMin >= startTotalMin && recordTotalMin <= endTotalMin;
+                filteredRecords = allRecords.filter(r => {
+                    const recordDate = new Date(r.timestamp).toISOString().split('T')[0];
+                    return recordDate === selectedDateStr;
                 });
+
+                // 如果同時選擇了時間範圍，進一步篩選
+                if (startTimeStr && endTimeStr) {
+                    const [startHour, startMin] = startTimeStr.split(':').map(Number);
+                    const [endHour, endMin] = endTimeStr.split(':').map(Number);
+
+                    filteredRecords = filteredRecords.filter(r => {
+                        const time = new Date(r.timestamp);
+                        const hours = time.getHours();
+                        const minutes = time.getMinutes();
+
+                        const startTotalMin = startHour * 60 + startMin;
+                        const endTotalMin = endHour * 60 + endMin;
+                        const recordTotalMin = hours * 60 + minutes;
+
+                        return recordTotalMin >= startTotalMin && recordTotalMin <= endTotalMin;
+                    });
+                }
             }
 
             // Display results
+            const selectedDateStr = dateStr ? new Date(dateStr).toISOString().split('T')[0] : '全部';
             displayAnalyticsResults(filteredRecords, selectedDateStr, startTimeStr, endTimeStr);
 
             // Calculate and display statistics
@@ -2753,6 +2732,7 @@
             checkAppLogin();
             initLanguage();
             loadAndDisplayRecords();
+            updateDashboard();
             updateShiftStatus();
             updateAdminMode();
             updateOneDriveStatus();
