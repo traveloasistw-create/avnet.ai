@@ -624,6 +624,11 @@
                             📥 導出 Excel
                         </button>
                     </div>
+                    <div class="button-group" style="margin-top: 10px;">
+                        <button class="btn-export" onclick="showOneDrivePath()" style="flex: 1; background: #FF6F00;">
+                            📍 查看 OneDrive 位置
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2743,6 +2748,109 @@
                 localStorage.setItem('computerId', computerId);
             }
             return computerId;
+        }
+
+        function showOneDrivePath() {
+            const oneDrivePath = 'C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\';
+
+            // Create modal overlay
+            let modal = document.getElementById('oneDrivePathModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'oneDrivePathModal';
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+                document.body.appendChild(modal);
+            }
+
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                max-width: 600px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+
+            const currentLang = localStorage.getItem('appLanguage') || 'zh-TW';
+            const messages = {
+                'zh-TW': {
+                    title: '📍 OneDrive 資料夾位置',
+                    pathLabel: 'OneDrive 資料夾路徑：',
+                    instruction1: '步驟 1：將已匯出的 JSON 檔案保存到此資料夾：',
+                    instruction2: '步驟 2：其他電腦可以從同一資料夾匯入 JSON 檔案',
+                    instruction3: '這樣可以實現多台電腦之間的數據同步',
+                    close: '關閉'
+                },
+                'en': {
+                    title: '📍 OneDrive Folder Location',
+                    pathLabel: 'OneDrive Folder Path:',
+                    instruction1: 'Step 1: Save exported JSON files to this folder:',
+                    instruction2: 'Step 2: Other computers can import JSON files from the same folder',
+                    instruction3: 'This enables data synchronization between multiple computers',
+                    close: 'Close'
+                },
+                'id': {
+                    title: '📍 Lokasi Folder OneDrive',
+                    pathLabel: 'Jalur Folder OneDrive:',
+                    instruction1: 'Langkah 1: Simpan file JSON yang diekspor ke folder ini:',
+                    instruction2: 'Langkah 2: Komputer lain dapat mengimpor file JSON dari folder yang sama',
+                    instruction3: 'Ini memungkinkan sinkronisasi data antar komputer',
+                    close: 'Tutup'
+                }
+            };
+
+            const msg = messages[currentLang] || messages['zh-TW'];
+
+            content.innerHTML = `
+                <h2 style="color: #333; margin-bottom: 20px; text-align: center;">${msg.title}</h2>
+                <div style="background: #f5f5f5; border-left: 4px solid #FF6F00; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                    <p style="color: #666; margin-bottom: 10px; font-size: 0.95em;">${msg.pathLabel}</p>
+                    <p style="color: #333; font-family: 'Courier New', monospace; font-weight: 600; word-break: break-all; font-size: 1em;">
+                        ${oneDrivePath}
+                    </p>
+                </div>
+                <div style="background: #e8f4f8; border-left: 4px solid #87CEEB; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                    <p style="color: #333; margin-bottom: 10px;">${msg.instruction1}</p>
+                    <p style="color: #666; margin-bottom: 10px; font-size: 0.95em;">↓</p>
+                    <p style="color: #333; margin-bottom: 15px;">${msg.instruction2}</p>
+                    <p style="color: #666; font-size: 0.9em; font-style: italic;">${msg.instruction3}</p>
+                </div>
+                <button onclick="document.getElementById('oneDrivePathModal').style.display='none'" style="
+                    width: 100%;
+                    padding: 12px;
+                    background: #FF6F00;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: all 0.3s;
+                " onmouseover="this.style.background='#E55A00'" onmouseout="this.style.background='#FF6F00'">${msg.close}</button>
+            `;
+
+            modal.innerHTML = '';
+            modal.appendChild(content);
+            modal.style.display = 'flex';
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
         }
 
         function initApp() {
