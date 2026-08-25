@@ -1581,6 +1581,8 @@
             const recordCountEl = document.getElementById('recordCount');
             if (recordCountEl) recordCountEl.textContent = `${t('recordCount')} ${records.length} ${t('recordsCount')}`;
 
+            if (!tableDiv) return;
+
             if (records.length === 0) {
                 tableDiv.innerHTML = `<div class="empty-state"><p>${t('emptyRecords')}</p></div>`;
                 return;
