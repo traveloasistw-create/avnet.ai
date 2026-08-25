@@ -1112,8 +1112,13 @@
                 btn.classList.remove('active');
             });
 
-            document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            const tabEl = document.getElementById(tabName + '-tab');
+            if (tabEl) {
+                tabEl.classList.add('active');
+            }
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
 
             // 安全檢查：只在元素存在時才focus
             if (tabName === 'input') {
@@ -1529,9 +1534,14 @@
             });
 
             // 更新顯示
-            document.getElementById('yesterdayCount').textContent = yesterdayPairs.length;
-            document.getElementById('weekCount').textContent = weekPairs.length;
-            document.getElementById('monthCount').textContent = monthPairs.length;
+            const els = {
+                yesterdayCount: document.getElementById('yesterdayCount'),
+                weekCount: document.getElementById('weekCount'),
+                monthCount: document.getElementById('monthCount')
+            };
+            if (els.yesterdayCount) els.yesterdayCount.textContent = yesterdayPairs.length;
+            if (els.weekCount) els.weekCount.textContent = weekPairs.length;
+            if (els.monthCount) els.monthCount.textContent = monthPairs.length;
         }
 
         function updateStats(records, pairs) {
@@ -2301,7 +2311,10 @@
         function initLanguage() {
             const savedLang = localStorage.getItem('appLanguage') || 'zh-TW';
             currentLanguage = savedLang;
-            document.getElementById('languageSelect').value = savedLang;
+            const langSelect = document.getElementById('languageSelect');
+            if (langSelect) {
+                langSelect.value = savedLang;
+            }
             updatePageLanguage();
             updatePlaceholders();
         }
