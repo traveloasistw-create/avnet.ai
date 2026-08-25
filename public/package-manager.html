@@ -68,6 +68,15 @@
             color: white;
         }
 
+        .admin-button {
+            transition: all 0.3s;
+        }
+
+        .admin-button:hover {
+            background: rgba(255,255,255,0.3) !important;
+            transform: scale(1.05);
+        }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -497,11 +506,28 @@
 </head>
 <body>
     <div class="language-switch">
+        <button id="adminToggle" class="admin-button" onclick="showAdminLogin()" style="margin-right: 10px; padding: 8px 12px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">🔐 Admin</button>
         <select id="languageSelect" onchange="setLanguage(this.value)">
             <option value="zh-TW">繁體中文</option>
             <option value="en">English</option>
             <option value="id">Bahasa Indonesia</option>
         </select>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+            <h2 style="color: #333; margin-bottom: 20px; text-align: center;">🔐 管理員登入</h2>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #555; font-weight: 600; margin-bottom: 8px;">密碼</label>
+                <input type="password" id="adminPassword" placeholder="輸入管理員密碼" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;" onkeypress="if(event.key==='Enter') verifyAdminPassword()">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="verifyAdminPassword()" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1em;">登入</button>
+                <button onclick="closeAdminModal()" style="flex: 1; padding: 12px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1em;">取消</button>
+            </div>
+            <div id="adminMessage" style="margin-top: 15px; text-align: center; color: #f44336; font-size: 0.9em;"></div>
+        </div>
     </div>
 
     <div class="container">
@@ -707,7 +733,11 @@
 
                     <hr style="margin: 20px 0; border: none; border-top: 2px solid #eee;">
 
-                    <div style="margin-top: 20px;">
+                    <div id="shiftStatsSection" style="margin-top: 20px; display: none; padding: 15px; background: #fff3e0; border-radius: 8px; border-left: 4px solid #FF9800;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <span style="color: #e65100; font-weight: 600; margin-right: 10px;">🔐 管理員功能</span>
+                            <span style="font-size: 0.8em; color: #FF6F00;">(僅管理員可見)</span>
+                        </div>
                         <h3 style="color: #333; margin-bottom: 15px;">🕐 班次統計</h3>
                         <div class="button-group">
                             <button class="btn-search" onclick="showShiftStats()" style="flex: 1;">查看班次統計</button>
@@ -740,7 +770,10 @@
     <script>
         const STORAGE_KEY = 'packageScannerData';
         const SHIFT_KEY = 'shiftData';
+        const ADMIN_KEY = 'adminSession';
+        const ADMIN_PASSWORD = '12345'; // 預設管理員密碼
         let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
+        let isAdminMode = localStorage.getItem(ADMIN_KEY) === 'true';
 
         const translations = {
             'zh-TW': {
@@ -1858,6 +1891,12 @@
         }
 
         function showShiftStats() {
+            if (!isAdminMode) {
+                alert('需要管理員權限才能查看班次統計');
+                showAdminLogin();
+                return;
+            }
+
             const shifts = getAllShifts();
             const statsDiv = document.getElementById('analyticsStatsContainer');
 
@@ -1935,6 +1974,12 @@
         }
 
         function clearShiftData() {
+            if (!isAdminMode) {
+                alert('需要管理員權限才能清空班次數據');
+                showAdminLogin();
+                return;
+            }
+
             if (confirm('確定要清空所有班次數據嗎？')) {
                 if (confirm('再確認一次？此操作無法撤銷！')) {
                     localStorage.removeItem(SHIFT_KEY);
@@ -2155,10 +2200,72 @@
             document.getElementById('importPreview').innerHTML = '';
         }
 
+        function showAdminLogin() {
+            document.getElementById('adminLoginModal').style.display = 'flex';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminMessage').innerHTML = '';
+            setTimeout(() => document.getElementById('adminPassword').focus(), 100);
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminLoginModal').style.display = 'none';
+        }
+
+        function verifyAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const messageDiv = document.getElementById('adminMessage');
+
+            if (password === ADMIN_PASSWORD) {
+                isAdminMode = true;
+                localStorage.setItem(ADMIN_KEY, 'true');
+                closeAdminModal();
+                updateAdminMode();
+                showSuccessMessage('✓ 管理員登入成功');
+                updateShiftStatsVisibility();
+            } else {
+                messageDiv.textContent = '❌ 密碼錯誤';
+                document.getElementById('adminPassword').value = '';
+                setTimeout(() => document.getElementById('adminPassword').focus(), 100);
+            }
+        }
+
+        function logoutAdmin() {
+            isAdminMode = false;
+            localStorage.removeItem(ADMIN_KEY);
+            updateAdminMode();
+            showSuccessMessage('✓ 已登出管理員模式');
+            updateShiftStatsVisibility();
+        }
+
+        function updateAdminMode() {
+            const adminToggle = document.getElementById('adminToggle');
+            if (isAdminMode) {
+                adminToggle.textContent = '🔓 Admin (已登入)';
+                adminToggle.style.background = 'rgba(76, 175, 80, 0.5)';
+                adminToggle.onclick = logoutAdmin;
+            } else {
+                adminToggle.textContent = '🔐 Admin';
+                adminToggle.style.background = 'rgba(255,255,255,0.2)';
+                adminToggle.onclick = showAdminLogin;
+            }
+        }
+
+        function updateShiftStatsVisibility() {
+            const shiftStatsDiv = document.getElementById('shiftStatsSection');
+            if (shiftStatsDiv) {
+                if (isAdminMode) {
+                    shiftStatsDiv.style.display = 'block';
+                } else {
+                    shiftStatsDiv.style.display = 'none';
+                }
+            }
+        }
+
         function initApp() {
             initLanguage();
             loadAndDisplayRecords();
             updateShiftStatus();
+            updateAdminMode();
 
             // Set default date to today for analytics
             const today = new Date().toISOString().split('T')[0];
@@ -2182,6 +2289,16 @@
             document.getElementById('waybillInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     queryWaybill();
+                }
+            });
+
+            // Initialize shift stats visibility
+            updateShiftStatsVisibility();
+
+            // Close modal on outside click
+            document.getElementById('adminLoginModal').addEventListener('click', (e) => {
+                if (e.target.id === 'adminLoginModal') {
+                    closeAdminModal();
                 }
             });
         }
