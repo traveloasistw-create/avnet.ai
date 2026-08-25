@@ -2545,10 +2545,12 @@
 
         function updateLogoutButton() {
             const logoutBtn = document.getElementById('logoutButton');
-            if (isAppLoggedIn) {
-                logoutBtn.style.display = 'inline-block';
-            } else {
-                logoutBtn.style.display = 'none';
+            if (logoutBtn) {
+                if (isAppLoggedIn) {
+                    logoutBtn.style.display = 'inline-block';
+                } else {
+                    logoutBtn.style.display = 'none';
+                }
             }
         }
 
