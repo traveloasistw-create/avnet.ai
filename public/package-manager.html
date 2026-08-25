@@ -510,6 +510,9 @@
             <button class="tab-button active" onclick="switchTab('input')" data-i18n="scanTab">
                 📥 掃碼輸入系統
             </button>
+            <button class="tab-button" onclick="switchTab('import')" data-i18n="importTab">
+                📥 批量導入
+            </button>
             <button class="tab-button" onclick="switchTab('lookup')" data-i18n="lookupTab">
                 🔍 異常查詢系統
             </button>
@@ -604,7 +607,31 @@
             </div>
         </div>
 
-        <!-- 标签页2：异常查询系统 -->
+        <!-- 标签页2：批量导入 -->
+        <div id="import-tab" class="tab-content">
+            <div class="card">
+                <h2 data-i18n="importTab">📥 批量導入</h2>
+
+                <div class="info-box">
+                    💡 粘貼 CSV 數據或上傳 Excel 文件，系統自動解析和配對
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600;">📋 輸入數據（CSV 格式）：</label>
+                    <textarea id="importData" placeholder="寄件號,時間戳&#10;TW260484674270W,2026-08-25 11:24:10&#10;TW260484674270W,2026-08-25 11:24:14"
+                        style="width: 100%; height: 300px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: monospace; font-size: 0.9em; resize: vertical;"></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-search" onclick="parseAndPreviewImport()" style="flex: 1;">📊 分析數據</button>
+                    <button class="btn-export" onclick="importRecords()" style="flex: 1;">✅ 確認導入</button>
+                </div>
+
+                <div id="importPreview"></div>
+            </div>
+        </div>
+
+        <!-- 标签页3：异常查询系统 -->
         <div id="lookup-tab" class="tab-content">
             <div class="card">
                 <h2 data-i18n="queryTitle">🔍 異常包裹查詢</h2>
@@ -637,6 +664,7 @@
                 title: '📦 包貨管理系統',
                 subtitle: '掃碼輸入 + 異常查詢 | 電腦 + 手機通用',
                 scanTab: '📥 掃碼輸入系統',
+                importTab: '📥 批量導入',
                 lookupTab: '🔍 異常查詢系統',
                 scanInput: '🔍 掃碼輸入',
                 scanTip: '💡 掃碼槍掃QR碼 → 自動記錄寄件號和時間',
@@ -700,6 +728,7 @@
                 title: '📦 Package Management System',
                 subtitle: 'QR Code Scanning + Anomaly Lookup | Desktop & Mobile',
                 scanTab: '📥 Scanner System',
+                importTab: '📥 Batch Import',
                 lookupTab: '🔍 Lookup System',
                 scanInput: '🔍 Scan Input',
                 scanTip: '💡 Scan QR code → Auto-record tracking number and timestamp',
@@ -763,6 +792,7 @@
                 title: '📦 Sistem Manajemen Paket',
                 subtitle: 'Pemindaian QR + Pencarian Anomali | Desktop & Seluler',
                 scanTab: '📥 Sistem Pemindai',
+                importTab: '📥 Impor Massal',
                 lookupTab: '🔍 Sistem Pencarian',
                 scanInput: '🔍 Input Pindai',
                 scanTip: '💡 Pindai kode QR → Catat otomatis nomor pelacakan dan waktu',
@@ -1274,6 +1304,193 @@
             document.getElementById('languageSelect').value = savedLang;
             updatePageLanguage();
             updatePlaceholders();
+        }
+
+        // 配對解析邏輯
+        function parseCSVData(text) {
+            const lines = text.trim().split('\n');
+            const records = [];
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    const waybill = parts[0].trim();
+                    const timestamp = parts[1].trim();
+
+                    if (waybill && timestamp) {
+                        records.push({
+                            waybill: waybill,
+                            timestamp: timestamp,
+                            date: new Date(timestamp)
+                        });
+                    }
+                }
+            });
+
+            return records;
+        }
+
+        // 配對規則：第1個 + 第1個間隔≥5秒的
+        function matchPairs(records) {
+            const grouped = {};
+
+            records.forEach(record => {
+                if (!grouped[record.waybill]) {
+                    grouped[record.waybill] = [];
+                }
+                grouped[record.waybill].push(record);
+            });
+
+            const pairs = [];
+            const anomalies = [];
+
+            Object.keys(grouped).forEach(waybill => {
+                const scans = grouped[waybill].sort((a, b) => a.date - b.date);
+
+                if (scans.length === 1) {
+                    anomalies.push({
+                        waybill: waybill,
+                        reason: '單次掃碼，無法配對',
+                        scans: scans
+                    });
+                } else {
+                    const firstScan = scans[0];
+                    let matched = false;
+
+                    for (let i = 1; i < scans.length; i++) {
+                        const interval = (scans[i].date - firstScan.date) / 1000;
+
+                        if (interval >= 5) {
+                            pairs.push({
+                                waybill: waybill,
+                                startTime: firstScan.timestamp,
+                                completeTime: scans[i].timestamp,
+                                duration: interval,
+                                durationDisplay: formatDuration(interval),
+                                status: 'normal'
+                            });
+                            matched = true;
+                            break;
+                        }
+                    }
+
+                    if (!matched) {
+                        anomalies.push({
+                            waybill: waybill,
+                            reason: '所有間隔 < 5秒，無法配對',
+                            scans: scans
+                        });
+                    }
+                }
+            });
+
+            return { pairs, anomalies };
+        }
+
+        function parseAndPreviewImport() {
+            const importText = document.getElementById('importData').value;
+
+            if (!importText.trim()) {
+                alert('請輸入 CSV 數據');
+                return;
+            }
+
+            const records = parseCSVData(importText);
+
+            if (records.length === 0) {
+                alert('未找到有效數據');
+                return;
+            }
+
+            const { pairs, anomalies } = matchPairs(records);
+
+            let html = `
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
+                    <h3 style="color: #333; margin-bottom: 20px;">📊 預覽結果</h3>
+                    <div style="margin-bottom: 20px;">
+                        <span style="display: inline-block; background: #4CAF50; color: white; padding: 8px 16px; border-radius: 6px; margin-right: 10px;">✅ 成功配對: ${pairs.length}</span>
+                        <span style="display: inline-block; background: #FF9800; color: white; padding: 8px 16px; border-radius: 6px;">⚠️ 異常: ${anomalies.length}</span>
+                    </div>
+            `;
+
+            if (pairs.length > 0) {
+                html += `<h4 style="color: #333; margin-top: 20px; margin-bottom: 10px;">✅ 成功配對記錄：</h4>`;
+                html += '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<thead><tr style="background: #f5f5f5;">';
+                html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">寄件號</th>';
+                html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">開始時間</th>';
+                html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">完成時間</th>';
+                html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">耗時</th>';
+                html += '</tr></thead><tbody>';
+
+                pairs.forEach(pair => {
+                    html += `<tr style="border-bottom: 1px solid #eee;">`;
+                    html += `<td style="padding: 10px;"><code>${pair.waybill}</code></td>`;
+                    html += `<td style="padding: 10px;">${pair.startTime}</td>`;
+                    html += `<td style="padding: 10px;">${pair.completeTime}</td>`;
+                    html += `<td style="padding: 10px; font-weight: 600; color: #4CAF50;">${pair.durationDisplay}</td>`;
+                    html += `</tr>`;
+                });
+
+                html += '</tbody></table>';
+            }
+
+            if (anomalies.length > 0) {
+                html += `<h4 style="color: #333; margin-top: 20px; margin-bottom: 10px;">⚠️ 異常記錄：</h4>`;
+                anomalies.forEach(anom => {
+                    html += `<div style="background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #FF9800; margin-bottom: 10px;">`;
+                    html += `<strong>${anom.waybill}</strong><br>`;
+                    html += `原因: ${anom.reason}<br>`;
+                    html += `掃碼次數: ${anom.scans.length}`;
+                    html += `</div>`;
+                });
+            }
+
+            html += `</div>`;
+
+            document.getElementById('importPreview').innerHTML = html;
+
+            // 儲存配對結果供導入使用
+            window.importPairs = pairs;
+            window.importAnomalies = anomalies;
+        }
+
+        function importRecords() {
+            if (!window.importPairs || window.importPairs.length === 0) {
+                alert('請先分析數據');
+                return;
+            }
+
+            const records = getAllRecords();
+            const importCount = window.importPairs.length;
+
+            window.importPairs.forEach(pair => {
+                // 添加開始記錄
+                records.push({
+                    id: Date.now() + Math.random(),
+                    waybill: pair.waybill,
+                    status: 'start',
+                    timestamp: new Date(pair.startTime).toISOString(),
+                    timeDisplay: formatTime(pair.startTime)
+                });
+
+                // 添加完成記錄
+                records.push({
+                    id: Date.now() + Math.random() + 1,
+                    waybill: pair.waybill,
+                    status: 'complete',
+                    timestamp: new Date(pair.completeTime).toISOString(),
+                    timeDisplay: formatTime(pair.completeTime)
+                });
+            });
+
+            saveRecords(records);
+            showSuccessMessage(`✓ 已導入 ${importCount} 條記錄`);
+            document.getElementById('importData').value = '';
+            document.getElementById('importPreview').innerHTML = '';
         }
 
         function initApp() {
