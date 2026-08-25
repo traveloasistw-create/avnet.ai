@@ -563,6 +563,13 @@
 
                     <div id="successMessage"></div>
 
+                    <!-- 實時計時器 -->
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">⏱️ 當前包裹耗時</div>
+                        <div id="packageTimer" style="font-size: 3.5em; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 5px;">00:00</div>
+                        <div style="font-size: 0.85em; opacity: 0.8; margin-top: 10px;">班次時長: <span id="shiftTimerDisplay">00:00</span></div>
+                    </div>
+
                     <div class="input-group">
                         <label for="operatorCode">👤 員工代碼</label>
                         <input type="text" id="operatorCode" placeholder="例如: laude01">
@@ -774,6 +781,11 @@
         const ADMIN_PASSWORD = '12345'; // 預設管理員密碼
         let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
         let isAdminMode = localStorage.getItem(ADMIN_KEY) === 'true';
+
+        // 計時器變數
+        let packageStartTime = null;
+        let packageTimerInterval = null;
+        let shiftTimerInterval = null;
 
         const translations = {
             'zh-TW': {
@@ -1181,24 +1193,36 @@
             loadAndDisplayRecords();
         }
 
-        function addRecord(waybill, status) {
+        function addRecord(waybill, status, duration = null) {
             const records = getAllRecords();
             const timestamp = new Date();
             const activeShift = getActiveShift();
             const operator = activeShift ? activeShift.employee : '未指定';
 
-            records.push({
+            const record = {
                 id: Date.now(),
                 waybill: waybill.trim(),
                 operator: operator,
                 status: status,
                 timestamp: timestamp.toISOString(),
                 timeDisplay: formatTime(timestamp)
-            });
+            };
+
+            // 如果是完成狀態且有耗時，記錄它
+            if (status === 'complete' && duration !== null) {
+                record.duration = duration; // 秒數
+                record.durationDisplay = formatDuration(duration);
+            }
+
+            records.push(record);
 
             saveRecords(records);
             const statusText = status === 'start' ? t('statusStart') : t('statusComplete');
-            showSuccessMessage(`${t('recordedMsg')}: ${waybill} (${statusText}) - ${operator}`);
+            let message = `${t('recordedMsg')}: ${waybill} (${statusText}) - ${operator}`;
+            if (duration !== null) {
+                message += ` ⏱️ ${formatDuration(duration)}`;
+            }
+            showSuccessMessage(message);
             clearInput();
         }
 
@@ -1206,6 +1230,57 @@
             document.getElementById('waybillNumber').value = '';
             document.getElementById('status').value = '';
             document.getElementById('waybillNumber').focus();
+        }
+
+        function startPackageTimer() {
+            stopPackageTimer();
+            packageTimerInterval = setInterval(() => {
+                if (packageStartTime !== null) {
+                    const elapsed = (Date.now() - packageStartTime) / 1000;
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = Math.floor(elapsed % 60);
+                    const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    document.getElementById('packageTimer').textContent = display;
+                }
+            }, 100);
+        }
+
+        function stopPackageTimer() {
+            if (packageTimerInterval) {
+                clearInterval(packageTimerInterval);
+                packageTimerInterval = null;
+            }
+            document.getElementById('packageTimer').textContent = '00:00';
+        }
+
+        function startShiftTimer() {
+            stopShiftTimer();
+            const activeShift = getActiveShift();
+            if (!activeShift) return;
+
+            shiftTimerInterval = setInterval(() => {
+                const startTime = new Date(activeShift.startTime).getTime();
+                const elapsed = (Date.now() - startTime) / 1000;
+                const hours = Math.floor(elapsed / 3600);
+                const minutes = Math.floor((elapsed % 3600) / 60);
+                const seconds = Math.floor(elapsed % 60);
+
+                let display = '';
+                if (hours > 0) {
+                    display = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                } else {
+                    display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+                document.getElementById('shiftTimerDisplay').textContent = display;
+            }, 100);
+        }
+
+        function stopShiftTimer() {
+            if (shiftTimerInterval) {
+                clearInterval(shiftTimerInterval);
+                shiftTimerInterval = null;
+            }
+            document.getElementById('shiftTimerDisplay').textContent = '00:00';
         }
 
         function formatTime(date) {
@@ -1262,10 +1337,13 @@
                 const result = startShift(input);
                 showSuccessMessage(result.message);
                 clearInput();
+                startShiftTimer();
                 return;
             }
 
             // 否則記錄包裹開始
+            packageStartTime = Date.now();
+            startPackageTimer();
             addRecord(input, 'start');
         }
 
@@ -1283,12 +1361,19 @@
                     const result = endShift();
                     showSuccessMessage(result.message);
                     clearInput();
+                    stopShiftTimer();
                     return;
                 }
             }
 
             // 否則記錄包裹完成
-            addRecord(input, 'complete');
+            let duration = null;
+            if (packageStartTime !== null) {
+                duration = (Date.now() - packageStartTime) / 1000; // 轉換為秒
+                packageStartTime = null;
+                stopPackageTimer();
+            }
+            addRecord(input, 'complete', duration);
         }
 
         function showSuccessMessage(msg) {
@@ -1379,6 +1464,7 @@
             html += `<th>${t('waybillCol')}</th>`;
             html += `<th>${t('statusCol')}</th>`;
             html += `<th>${t('timeCol')}</th>`;
+            html += `<th>⏱️ 耗時</th>`;
             html += `<th>${t('actionCol')}</th>`;
             html += '</tr></thead><tbody>';
 
@@ -1387,10 +1473,12 @@
                 const statusDisplay = record.status === 'start'
                     ? `<span class="status-start">${t('statusStartCol')}</span>`
                     : `<span class="status-complete">${t('statusCompleteCol')}</span>`;
+                const durationDisplay = record.duration ? `<span style="font-weight: 600; color: #667eea;">${record.durationDisplay}</span>` : '-';
                 html += `<tr>`;
                 html += `<td><code>${record.waybill}</code></td>`;
                 html += `<td>${statusDisplay}</td>`;
                 html += `<td>${record.timeDisplay}</td>`;
+                html += `<td>${durationDisplay}</td>`;
                 html += `<td><button class="btn-delete" onclick="deleteRecord(${record.id})">${t('deleteBtn')}</button></td>`;
                 html += `</tr>`;
             });
@@ -1918,6 +2006,7 @@
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">🕐 班次時長</th>`;
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">📦 包裹數</th>`;
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">✓ 完成數</th>`;
+            html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">⏱️ 平均時間</th>`;
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">⏳ 工作時間</th>`;
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">🛑 空閒時間</th>`;
             html += `<th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">📊 效率</th>`;
@@ -1942,6 +2031,14 @@
                 const startRecords = shiftRecords.filter(r => r.status === 'start');
                 const completeRecords = shiftRecords.filter(r => r.status === 'complete');
 
+                // 計算平均處理時間（從有duration的記錄）
+                const recordsWithDuration = completeRecords.filter(r => r.duration);
+                let avgDuration = 0;
+                if (recordsWithDuration.length > 0) {
+                    const totalDuration = recordsWithDuration.reduce((sum, r) => sum + r.duration, 0);
+                    avgDuration = totalDuration / recordsWithDuration.length;
+                }
+
                 // 計算工作時間和空閒時間
                 let workDuration = 0;
                 const recordTimes = shiftRecords.map(r => new Date(r.timestamp).getTime()).sort((a, b) => a - b);
@@ -1961,6 +2058,7 @@
                 html += `<td style="padding: 12px; text-align: center;">${formatDuration(shiftDuration)}</td>`;
                 html += `<td style="padding: 12px; text-align: center;"><span style="background: #667eea; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">${startRecords.length}</span></td>`;
                 html += `<td style="padding: 12px; text-align: center;"><span style="background: #4CAF50; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">${completeRecords.length}</span></td>`;
+                html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: #9C27B0;">${avgDuration > 0 ? formatDuration(avgDuration) : '-'}</td>`;
                 html += `<td style="padding: 12px; text-align: center; color: #2196F3; font-weight: 600;">${formatDuration(workDuration)}</td>`;
                 html += `<td style="padding: 12px; text-align: center; color: #FF9800; font-weight: 600;">${formatDuration(idleDuration)}</td>`;
                 html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: ${efficiency > 70 ? '#4CAF50' : efficiency > 50 ? '#FF9800' : '#f44336'}">${efficiency}%</td>`;
@@ -2266,6 +2364,11 @@
             loadAndDisplayRecords();
             updateShiftStatus();
             updateAdminMode();
+
+            // 如果有活躍班次，啟動班次計時器
+            if (getActiveShift()) {
+                startShiftTimer();
+            }
 
             // Set default date to today for analytics
             const today = new Date().toISOString().split('T')[0];
