@@ -1475,24 +1475,62 @@
             });
 
             Object.keys(waybillMap).forEach(waybill => {
-                const events = waybillMap[waybill];
-                for (let i = 0; i < events.length - 1; i++) {
-                    if (events[i].status === 'start' && events[i + 1].status === 'complete') {
-                        const startTime = new Date(events[i].timestamp);
-                        const completeTime = new Date(events[i + 1].timestamp);
-                        const duration = (completeTime - startTime) / 1000;
+                let events = waybillMap[waybill];
 
+                // 按時間排序
+                events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                // 如果只有 1 條記錄，跳過
+                if (events.length === 1) {
+                    return;
+                }
+
+                // 如果有多條記錄，使用新邏輯：找最長間隔
+                let maxGap = 0;
+                let maxGapIndex = -1;
+
+                for (let i = 0; i < events.length - 1; i++) {
+                    const gap = new Date(events[i + 1].timestamp) - new Date(events[i].timestamp);
+                    if (gap > maxGap) {
+                        maxGap = gap;
+                        maxGapIndex = i;
+                    }
+                }
+
+                if (maxGapIndex === -1 || maxGap === 0) {
+                    // 所有間隔相同或沒有明顯間隔，使用第一個和最後一個
+                    const startTime = new Date(events[0].timestamp);
+                    const completeTime = new Date(events[events.length - 1].timestamp);
+                    const duration = (completeTime - startTime) / 1000;
+
+                    if (duration > 0) {
                         pairs.push({
                             waybill: waybill,
                             startTime: startTime,
                             completeTime: completeTime,
                             duration: duration,
-                            startDisplay: formatTime(events[i].timestamp),
-                            completeDisplay: formatTime(events[i + 1].timestamp),
+                            startDisplay: formatTime(events[0].timestamp),
+                            completeDisplay: formatTime(events[events.length - 1].timestamp),
                             durationDisplay: formatDuration(duration)
                         });
-                        i++;
                     }
+                } else {
+                    // 使用最長間隔來分組
+                    // 最長間隔之前的最後一條 = 開始
+                    // 最長間隔之後的第一條 = 完成
+                    const startTime = new Date(events[maxGapIndex].timestamp);
+                    const completeTime = new Date(events[maxGapIndex + 1].timestamp);
+                    const duration = (completeTime - startTime) / 1000;
+
+                    pairs.push({
+                        waybill: waybill,
+                        startTime: startTime,
+                        completeTime: completeTime,
+                        duration: duration,
+                        startDisplay: formatTime(events[maxGapIndex].timestamp),
+                        completeDisplay: formatTime(events[maxGapIndex + 1].timestamp),
+                        durationDisplay: formatDuration(duration)
+                    });
                 }
             });
 
