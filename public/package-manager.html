@@ -1052,7 +1052,8 @@
                 sessionStorage.setItem(APP_LOGIN_KEY, 'true');
                 isAppLoggedIn = true;
                 document.getElementById('appLoginScreen').style.display = 'none';
-                document.getElementById('waybillNumber').focus();
+                updateLogoutButton();
+                // 不需要focus特定元素，應用已加載
             } else {
                 messageDiv.textContent = '❌ 密碼錯誤，請重試';
                 document.getElementById('appLoginPassword').value = '';
@@ -1109,12 +1110,16 @@
             document.getElementById(tabName + '-tab').classList.add('active');
             event.target.classList.add('active');
 
+            // 安全檢查：只在元素存在時才focus
             if (tabName === 'input') {
-                setTimeout(() => document.getElementById('waybillNumber').focus(), 100);
+                const el = document.getElementById('waybillNumber');
+                if (el) setTimeout(() => el.focus(), 100);
             } else if (tabName === 'analytics') {
-                setTimeout(() => document.getElementById('analyticsDate').focus(), 100);
+                const el = document.getElementById('analyticsDate');
+                if (el) setTimeout(() => el.focus(), 100);
             } else {
-                setTimeout(() => document.getElementById('waybillInput').focus(), 100);
+                const el = document.getElementById('waybillInput');
+                if (el) setTimeout(() => el.focus(), 100);
             }
         }
 
@@ -1528,10 +1533,21 @@
             const startCount = records.filter(r => r.status === 'start').length;
             const completeCount = records.filter(r => r.status === 'complete').length;
 
-            document.getElementById('totalRecords').textContent = records.length;
-            document.getElementById('pairsCount').textContent = pairs.length;
-            document.getElementById('startCount').textContent = startCount;
-            document.getElementById('completeCount').textContent = completeCount;
+            // 安全檢查：只更新存在的元素
+            const els = {
+                totalRecords: document.getElementById('totalRecords'),
+                pairsCount: document.getElementById('pairsCount'),
+                startCount: document.getElementById('startCount'),
+                completeCount: document.getElementById('completeCount'),
+                avgDuration: document.getElementById('avgDuration'),
+                maxDuration: document.getElementById('maxDuration'),
+                minDuration: document.getElementById('minDuration')
+            };
+
+            if (els.totalRecords) els.totalRecords.textContent = records.length;
+            if (els.pairsCount) els.pairsCount.textContent = pairs.length;
+            if (els.startCount) els.startCount.textContent = startCount;
+            if (els.completeCount) els.completeCount.textContent = completeCount;
 
             if (pairs.length > 0) {
                 const durations = pairs.map(p => p.duration);
@@ -1539,15 +1555,16 @@
                 const maxDuration = Math.max(...durations);
                 const minDuration = Math.min(...durations);
 
-                document.getElementById('avgDuration').textContent = formatDuration(avgDuration);
-                document.getElementById('maxDuration').textContent = formatDuration(maxDuration);
-                document.getElementById('minDuration').textContent = formatDuration(minDuration);
+                if (els.avgDuration) els.avgDuration.textContent = formatDuration(avgDuration);
+                if (els.maxDuration) els.maxDuration.textContent = formatDuration(maxDuration);
+                if (els.minDuration) els.minDuration.textContent = formatDuration(minDuration);
             }
         }
 
         function displayRecordsTable(records) {
             const tableDiv = document.getElementById('recordsTable');
-            document.getElementById('recordCount').textContent = `${t('recordCount')} ${records.length} ${t('recordsCount')}`;
+            const recordCountEl = document.getElementById('recordCount');
+            if (recordCountEl) recordCountEl.textContent = `${t('recordCount')} ${records.length} ${t('recordsCount')}`;
 
             if (records.length === 0) {
                 tableDiv.innerHTML = `<div class="empty-state"><p>${t('emptyRecords')}</p></div>`;
