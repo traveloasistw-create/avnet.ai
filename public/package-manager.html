@@ -575,6 +575,9 @@
             <button class="tab-button" onclick="switchTab('analytics')" data-i18n="analyticsTab">
                 📅 數據查詢
             </button>
+            <button class="tab-button" onclick="switchTab('downtime')" style="background: #FFA500; color: white;">
+                ⏸️ Down Time 分析
+            </button>
         </div>
 
         <!-- 标签页1：仪表板 -->
@@ -744,6 +747,39 @@
                     <div id="analyticsResultsContainer">
                         <div class="empty-state">
                             <p data-i18n="noData">未有數據</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Down Time 分析選項卡 -->
+        <div id="downtime-tab" class="tab-content">
+            <div class="main-grid">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h2>⏸️ Down Time 分析</h2>
+                    <div class="info-box">
+                        💡 顯示員工在完成一個包裹和開始下一個包裹之間的停機時間
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="color: #333; margin-bottom: 20px;">🎯 員工效率排行</h3>
+                    <div id="downTimeRankingContainer">
+                        <div class="empty-state">
+                            <p>點擊「分析」查看數據</p>
+                        </div>
+                    </div>
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button class="btn-search" onclick="displayDownTimeAnalysis()" style="flex: 1;">📊 分析</button>
+                    </div>
+                </div>
+
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h3 style="color: #333; margin-bottom: 20px;">📋 Down Time 詳細列表</h3>
+                    <div id="downTimeDetailsContainer">
+                        <div class="empty-state">
+                            <p>點擊「分析」查看詳細數據</p>
                         </div>
                     </div>
                 </div>
@@ -1489,6 +1525,74 @@
             return pairs;
         }
 
+        function calculateDownTime() {
+            const records = getAllRecords();
+            const employeeMap = {};
+
+            // 按員工分組
+            records.forEach(record => {
+                const employeeCode = record.employeeCode || '未知員工';
+                if (!employeeMap[employeeCode]) {
+                    employeeMap[employeeCode] = [];
+                }
+                employeeMap[employeeCode].push(record);
+            });
+
+            const downTimeData = [];
+
+            // 計算每個員工的 down time
+            Object.keys(employeeMap).forEach(employeeCode => {
+                const employeeRecords = employeeMap[employeeCode];
+
+                // 按時間排序
+                employeeRecords.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                let totalDownTime = 0;
+                const downTimes = [];
+
+                // 找出所有 complete 之後的 start
+                for (let i = 0; i < employeeRecords.length - 1; i++) {
+                    const currentRecord = employeeRecords[i];
+                    const nextRecord = employeeRecords[i + 1];
+
+                    // 如果當前是 complete，下一個是 start，計算 down time
+                    if (currentRecord.status === 'complete' && nextRecord.status === 'start') {
+                        const downTimeMs = new Date(nextRecord.timestamp) - new Date(currentRecord.timestamp);
+                        const downTimeSec = downTimeMs / 1000;
+
+                        if (downTimeSec > 0) {
+                            totalDownTime += downTimeSec;
+                            downTimes.push({
+                                fromWaybill: currentRecord.waybill,
+                                toWaybill: nextRecord.waybill,
+                                completeTime: formatTime(currentRecord.timestamp),
+                                startTime: formatTime(nextRecord.timestamp),
+                                downTime: downTimeSec,
+                                downTimeDisplay: formatDuration(downTimeSec)
+                            });
+                        }
+                    }
+                }
+
+                const avgDownTime = downTimes.length > 0 ? totalDownTime / downTimes.length : 0;
+
+                downTimeData.push({
+                    employeeCode: employeeCode,
+                    totalDownTime: totalDownTime,
+                    totalDownTimeDisplay: formatDuration(totalDownTime),
+                    avgDownTime: avgDownTime,
+                    avgDownTimeDisplay: formatDuration(avgDownTime),
+                    downTimeCount: downTimes.length,
+                    downTimes: downTimes
+                });
+            });
+
+            // 按平均 down time 排序（高到低）
+            downTimeData.sort((a, b) => b.avgDownTime - a.avgDownTime);
+
+            return downTimeData;
+        }
+
         function loadAndDisplayRecords() {
             const records = getAllRecords();
             const pairs = calculatePairs();
@@ -1619,6 +1723,89 @@
 
             html += '</tbody></table>';
             tableDiv.innerHTML = html;
+        }
+
+        function displayDownTimeAnalysis() {
+            const downTimeData = calculateDownTime();
+
+            // 顯示排行
+            const rankingContainer = document.getElementById('downTimeRankingContainer');
+            if (downTimeData.length === 0) {
+                rankingContainer.innerHTML = '<div class="empty-state"><p>沒有 down time 數據</p></div>';
+            } else {
+                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">';
+                downTimeData.forEach((data, index) => {
+                    html += `
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">🏆 ${index === 0 ? '效率最低' : index === 1 ? '效率次低' : index === 2 ? '效率第三低' : `#${index + 1}`}</div>
+                            <div style="font-size: 1.2em; font-weight: 600; margin-bottom: 8px;">${data.employeeCode}</div>
+                            <div style="font-size: 1.8em; font-weight: bold; margin-bottom: 5px;">${data.avgDownTimeDisplay}</div>
+                            <div style="font-size: 0.85em; opacity: 0.8;">平均停機時間</div>
+                            <hr style="margin: 10px 0; border: 1px solid rgba(255,255,255,0.3);">
+                            <div style="font-size: 0.85em; margin: 5px 0;">總停機: ${data.totalDownTimeDisplay}</div>
+                            <div style="font-size: 0.85em;">停機次數: ${data.downTimeCount}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                rankingContainer.innerHTML = html;
+            }
+
+            // 顯示詳細列表
+            const detailsContainer = document.getElementById('downTimeDetailsContainer');
+            let detailsHtml = '';
+
+            downTimeData.forEach(employeeData => {
+                detailsHtml += `
+                    <div style="margin-bottom: 30px; background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <h4 style="color: #333; margin-bottom: 10px;">👤 ${employeeData.employeeCode}</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.85em; color: #666;">平均停機</div>
+                                <div style="font-size: 1.3em; font-weight: bold; color: #667eea;">${employeeData.avgDownTimeDisplay}</div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.85em; color: #666;">總停機時間</div>
+                                <div style="font-size: 1.3em; font-weight: bold; color: #764ba2;">${employeeData.totalDownTimeDisplay}</div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.85em; color: #666;">停機次數</div>
+                                <div style="font-size: 1.3em; font-weight: bold; color: #FF6F00;">${employeeData.downTimeCount}</div>
+                            </div>
+                        </div>
+                        <table style="width: 100%; background: white; border-collapse: collapse;">
+                            <thead style="background: #e0e0e0;">
+                                <tr>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">前一包裹</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">完成時間</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">下一包裹</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">開始時間</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc; color: #FF6F00; font-weight: bold;">停機時間</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                employeeData.downTimes.forEach(dt => {
+                    detailsHtml += `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; border: 1px solid #eee;"><code>${dt.fromWaybill}</code></td>
+                            <td style="padding: 10px; border: 1px solid #eee;">${dt.completeTime}</td>
+                            <td style="padding: 10px; border: 1px solid #eee;"><code>${dt.toWaybill}</code></td>
+                            <td style="padding: 10px; border: 1px solid #eee;">${dt.startTime}</td>
+                            <td style="padding: 10px; border: 1px solid #eee; color: #FF6F00; font-weight: bold;">${dt.downTimeDisplay}</td>
+                        </tr>
+                    `;
+                });
+
+                detailsHtml += '</tbody></table></div>';
+            });
+
+            if (detailsHtml) {
+                detailsContainer.innerHTML = detailsHtml;
+            } else {
+                detailsContainer.innerHTML = '<div class="empty-state"><p>沒有 down time 數據</p></div>';
+            }
         }
 
         function deleteRecord(id) {
