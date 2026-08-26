@@ -1558,7 +1558,9 @@
                 employeeRecords.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
                 let totalDownTime = 0;
+                let normalDownTime = 0; // 只計算 ≤5 分鐘的
                 const downTimes = [];
+                const THRESHOLD = 300; // 5 分鐘
 
                 // 找出所有 complete 之後的 start
                 for (let i = 0; i < employeeRecords.length - 1; i++) {
@@ -1572,28 +1574,38 @@
 
                         if (downTimeSec > 0) {
                             totalDownTime += downTimeSec;
+                            // 只有 ≤5 分鐘的數據才算入績效評估
+                            if (downTimeSec <= THRESHOLD) {
+                                normalDownTime += downTimeSec;
+                            }
                             downTimes.push({
                                 fromWaybill: currentRecord.waybill,
                                 toWaybill: nextRecord.waybill,
                                 completeTime: formatTime(currentRecord.timestamp),
                                 startTime: formatTime(nextRecord.timestamp),
                                 downTime: downTimeSec,
-                                downTimeDisplay: formatDuration(downTimeSec)
+                                downTimeDisplay: formatDuration(downTimeSec),
+                                isAnomaly: downTimeSec > THRESHOLD
                             });
                         }
                     }
                 }
 
-                const avgDownTime = downTimes.length > 0 ? totalDownTime / downTimes.length : 0;
+                // 只計算正常範圍內的平均值
+                const normalDownTimes = downTimes.filter(dt => !dt.isAnomaly);
+                const avgDownTime = normalDownTimes.length > 0 ? normalDownTime / normalDownTimes.length : 0;
 
                 downTimeData.push({
                     employeeCode: employeeCode,
-                    totalDownTime: totalDownTime,
-                    totalDownTimeDisplay: formatDuration(totalDownTime),
-                    avgDownTime: avgDownTime,
+                    totalDownTime: normalDownTime, // 只包含正常數據
+                    totalDownTimeDisplay: formatDuration(normalDownTime),
+                    avgDownTime: avgDownTime, // 只計算正常數據的平均
                     avgDownTimeDisplay: formatDuration(avgDownTime),
-                    downTimeCount: downTimes.length,
-                    downTimes: downTimes
+                    downTimeCount: normalDownTimes.length, // 只計算正常記錄數
+                    allDownTimes: totalDownTime, // 保留總時間供參考
+                    allDownTimeDisplay: formatDuration(totalDownTime),
+                    downTimes: downTimes, // 包含所有記錄（包括異常）
+                    anomalyCount: downTimes.length - normalDownTimes.length
                 });
             });
 
