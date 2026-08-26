@@ -1733,17 +1733,16 @@
             if (downTimeData.length === 0) {
                 rankingContainer.innerHTML = '<div class="empty-state"><p>沒有 down time 數據</p></div>';
             } else {
-                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">';
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">';
                 downTimeData.forEach((data, index) => {
                     html += `
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">🏆 ${index === 0 ? '效率最低' : index === 1 ? '效率次低' : index === 2 ? '效率第三低' : `#${index + 1}`}</div>
-                            <div style="font-size: 1.2em; font-weight: 600; margin-bottom: 8px;">${data.employeeCode}</div>
-                            <div style="font-size: 1.8em; font-weight: bold; margin-bottom: 5px;">${data.avgDownTimeDisplay}</div>
-                            <div style="font-size: 0.85em; opacity: 0.8;">平均停機時間</div>
-                            <hr style="margin: 10px 0; border: 1px solid rgba(255,255,255,0.3);">
-                            <div style="font-size: 0.85em; margin: 5px 0;">總停機: ${data.totalDownTimeDisplay}</div>
-                            <div style="font-size: 0.85em;">停機次數: ${data.downTimeCount}</div>
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                            <div style="font-size: 0.8em; opacity: 0.9; margin-bottom: 8px;">🏆 ${index === 0 ? '效率最低' : index === 1 ? '次低' : index === 2 ? '第三' : `#${index + 1}`}</div>
+                            <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 6px;">${data.employeeCode}</div>
+                            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 3px;">${data.avgDownTimeDisplay}</div>
+                            <div style="font-size: 0.8em; opacity: 0.85; margin-bottom: 8px;">平均停機</div>
+                            <hr style="margin: 8px 0; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="font-size: 0.75em; margin: 4px 0; opacity: 0.9;">總計: ${data.totalDownTimeDisplay} | ${data.downTimeCount}次</div>
                         </div>
                     `;
                 });
@@ -1757,48 +1756,39 @@
 
             downTimeData.forEach(employeeData => {
                 detailsHtml += `
-                    <div style="margin-bottom: 30px; background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
-                        <h4 style="color: #333; margin-bottom: 10px;">👤 ${employeeData.employeeCode}</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
-                                <div style="font-size: 0.85em; color: #666;">平均停機</div>
-                                <div style="font-size: 1.3em; font-weight: bold; color: #667eea;">${employeeData.avgDownTimeDisplay}</div>
-                            </div>
-                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
-                                <div style="font-size: 0.85em; color: #666;">總停機時間</div>
-                                <div style="font-size: 1.3em; font-weight: bold; color: #764ba2;">${employeeData.totalDownTimeDisplay}</div>
-                            </div>
-                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
-                                <div style="font-size: 0.85em; color: #666;">停機次數</div>
-                                <div style="font-size: 1.3em; font-weight: bold; color: #FF6F00;">${employeeData.downTimeCount}</div>
-                            </div>
+                    <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 6px; border-left: 3px solid #667eea;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="color: #333; margin: 0; font-size: 0.95em;">👤 ${employeeData.employeeCode}</h4>
+                            <span style="font-size: 0.8em; color: #666;">avg: <strong style="color: #667eea;">${employeeData.avgDownTimeDisplay}</strong> | total: <strong style="color: #764ba2;">${employeeData.totalDownTimeDisplay}</strong></span>
                         </div>
-                        <table style="width: 100%; background: white; border-collapse: collapse;">
-                            <thead style="background: #e0e0e0;">
-                                <tr>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">前一包裹</th>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">完成時間</th>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">下一包裹</th>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc;">開始時間</th>
-                                    <th style="padding: 10px; text-align: left; border: 1px solid #ccc; color: #FF6F00; font-weight: bold;">停機時間</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; background: white; border-collapse: collapse; font-size: 0.9em;">
+                                <thead style="background: #e8eef7;">
+                                    <tr>
+                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">前包裹</th>
+                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">完成時間</th>
+                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">後包裹</th>
+                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">開始時間</th>
+                                        <th style="padding: 6px 8px; text-align: center; border: 1px solid #ddd; font-weight: 600; color: #FF6F00;">停機 ⏸️</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
 
-                employeeData.downTimes.forEach(dt => {
+                employeeData.downTimes.forEach((dt, idx) => {
+                    const bgColor = idx % 2 === 0 ? 'white' : '#fafafa';
                     detailsHtml += `
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 10px; border: 1px solid #eee;"><code>${dt.fromWaybill}</code></td>
-                            <td style="padding: 10px; border: 1px solid #eee;">${dt.completeTime}</td>
-                            <td style="padding: 10px; border: 1px solid #eee;"><code>${dt.toWaybill}</code></td>
-                            <td style="padding: 10px; border: 1px solid #eee;">${dt.startTime}</td>
-                            <td style="padding: 10px; border: 1px solid #eee; color: #FF6F00; font-weight: bold;">${dt.downTimeDisplay}</td>
+                        <tr style="background: ${bgColor}; border-bottom: 1px solid #eee;">
+                            <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.fromWaybill}</code></td>
+                            <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.completeTime}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.toWaybill}</code></td>
+                            <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.startTime}</td>
+                            <td style="padding: 6px 8px; border: 1px solid #eee; text-align: center; color: #FF6F00; font-weight: 600; font-size: 0.85em;">${dt.downTimeDisplay}</td>
                         </tr>
                     `;
                 });
 
-                detailsHtml += '</tbody></table></div>';
+                detailsHtml += '</tbody></table></div></div>';
             });
 
             if (detailsHtml) {
