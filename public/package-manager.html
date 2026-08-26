@@ -776,7 +776,15 @@
                 </div>
 
                 <div class="card" style="grid-column: 1 / -1;">
-                    <h3 style="color: #333; margin-bottom: 20px;">📋 Down Time 詳細列表</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: #333; margin: 0;">📋 Down Time 詳細分析</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="switchDownTimeView('employee')" id="viewBtn-employee" style="padding: 8px 12px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">👤 按員工</button>
+                            <button onclick="switchDownTimeView('hourly')" id="viewBtn-hourly" style="padding: 8px 12px; background: #f0f0f0; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">🕐 按小時</button>
+                            <button onclick="switchDownTimeView('period')" id="viewBtn-period" style="padding: 8px 12px; background: #f0f0f0; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">📅 按時段</button>
+                            <button onclick="switchDownTimeView('datetime')" id="viewBtn-datetime" style="padding: 8px 12px; background: #f0f0f0; color: #333; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;">📆 按日期+小時</button>
+                        </div>
+                    </div>
                     <div id="downTimeDetailsContainer">
                         <div class="empty-state">
                             <p>點擊「分析」查看詳細數據</p>
@@ -797,6 +805,8 @@
         let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
         let isAdminMode = localStorage.getItem(ADMIN_KEY) === 'true';
         let isAppLoggedIn = sessionStorage.getItem(APP_LOGIN_KEY) === 'true';
+        let currentDownTimeView = 'employee'; // 'employee', 'hourly', 'period', 'datetime'
+        let lastDownTimeData = null;
 
         // 計時器變數
         let packageStartTime = null;
@@ -1725,9 +1735,317 @@
             tableDiv.innerHTML = html;
         }
 
+        function switchDownTimeView(viewType) {
+            currentDownTimeView = viewType;
+
+            // 更新按鈕樣式
+            ['employee', 'hourly', 'period', 'datetime'].forEach(type => {
+                const btn = document.getElementById(`viewBtn-${type}`);
+                if (btn) {
+                    if (type === viewType) {
+                        btn.style.background = '#667eea';
+                        btn.style.color = 'white';
+                    } else {
+                        btn.style.background = '#f0f0f0';
+                        btn.style.color = '#333';
+                    }
+                }
+            });
+
+            // 重新渲染
+            if (lastDownTimeData) {
+                renderDownTimeByView(lastDownTimeData, viewType);
+            }
+        }
+
+        function renderDownTimeByView(downTimeData, viewType) {
+            const detailsContainer = document.getElementById('downTimeDetailsContainer');
+            const ANOMALY_THRESHOLD = 300;
+
+            if (viewType === 'employee') {
+                renderEmployeeView(downTimeData, ANOMALY_THRESHOLD, detailsContainer);
+            } else if (viewType === 'hourly') {
+                renderHourlyView(downTimeData, ANOMALY_THRESHOLD, detailsContainer);
+            } else if (viewType === 'period') {
+                renderPeriodView(downTimeData, ANOMALY_THRESHOLD, detailsContainer);
+            } else if (viewType === 'datetime') {
+                renderDateTimeView(downTimeData, ANOMALY_THRESHOLD, detailsContainer);
+            }
+        }
+
+        function renderEmployeeView(downTimeData, threshold, container) {
+            let anomalyHtml = '';
+            let normalHtml = '';
+
+            const allAnomalies = [];
+            downTimeData.forEach(employeeData => {
+                employeeData.downTimes.forEach(dt => {
+                    if (dt.downTime > threshold) {
+                        allAnomalies.push({
+                            employeeCode: employeeData.employeeCode,
+                            ...dt
+                        });
+                    }
+                });
+            });
+
+            if (allAnomalies.length > 0) {
+                anomalyHtml = buildAnomalyTable(allAnomalies);
+            }
+
+            downTimeData.forEach(employeeData => {
+                const normalDownTimes = employeeData.downTimes.filter(dt => dt.downTime <= threshold);
+                if (normalDownTimes.length > 0) {
+                    normalHtml += buildEmployeeNormalTable(employeeData, normalDownTimes);
+                }
+            });
+
+            container.innerHTML = (anomalyHtml || '') + (normalHtml || '<div class="empty-state"><p>沒有 down time 數據</p></div>');
+        }
+
+        function renderHourlyView(downTimeData, threshold, container) {
+            const hourlyData = {};
+
+            downTimeData.forEach(employeeData => {
+                employeeData.downTimes.forEach(dt => {
+                    const hour = dt.completeTime.substring(0, 2);
+                    if (!hourlyData[hour]) {
+                        hourlyData[hour] = { totalTime: 0, count: 0, anomalies: [], normalCount: 0 };
+                    }
+                    hourlyData[hour].totalTime += dt.downTime;
+                    hourlyData[hour].count++;
+                    if (dt.downTime > threshold) {
+                        hourlyData[hour].anomalies.push(dt);
+                    } else {
+                        hourlyData[hour].normalCount++;
+                    }
+                });
+            });
+
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">';
+            Object.keys(hourlyData).sort().forEach(hour => {
+                const data = hourlyData[hour];
+                const avgTime = data.totalTime / data.count;
+                const hasAnomalies = data.anomalies.length > 0;
+                const bgColor = hasAnomalies ? 'linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%)' : 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)';
+                const borderColor = hasAnomalies ? '#ff6f00' : '#1976d2';
+
+                html += `
+                    <div style="background: ${bgColor}; padding: 15px; border-radius: 8px; border-left: 4px solid ${borderColor};">
+                        <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 8px;">${hour}:00-${hour}:59 ${hasAnomalies ? '⚠️' : '✓'}</div>
+                        <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 5px;">${formatDuration(avgTime)}</div>
+                        <div style="font-size: 0.85em; color: #666;">平均停機 | ${data.count}筆紀錄</div>
+                        ${hasAnomalies ? `<div style="font-size: 0.8em; color: #d32f2f; margin-top: 5px;">🚨 ${data.anomalies.length}個異常</div>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            // 詳細表格
+            html += '<div style="margin-top: 20px;"><h4 style="color: #333; margin-bottom: 15px;">⏰ 各小時詳細統計</h4>';
+            Object.keys(hourlyData).sort().forEach(hour => {
+                const data = hourlyData[hour];
+                html += `
+                    <div style="margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 6px;">
+                        <h5 style="color: #333; margin: 0 0 10px 0;">${hour}:00-${hour}:59 (${data.count}筆)</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.8em; color: #666;">平均</div>
+                                <div style="font-size: 1.2em; font-weight: bold; color: #667eea;">${formatDuration(data.totalTime / data.count)}</div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.8em; color: #666;">總計</div>
+                                <div style="font-size: 1.2em; font-weight: bold; color: #764ba2;">${formatDuration(data.totalTime)}</div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 4px; text-align: center;">
+                                <div style="font-size: 0.8em; color: #666;">異常</div>
+                                <div style="font-size: 1.2em; font-weight: bold; color: ${data.anomalies.length > 0 ? '#d32f2f' : '#4caf50'};">${data.anomalies.length}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function renderPeriodView(downTimeData, threshold, container) {
+            const periodData = {
+                '上午 (06:00-12:00)': { start: 6, end: 12, totalTime: 0, count: 0, anomalies: 0 },
+                '下午 (12:00-18:00)': { start: 12, end: 18, totalTime: 0, count: 0, anomalies: 0 },
+                '晚上 (18:00-24:00)': { start: 18, end: 24, totalTime: 0, count: 0, anomalies: 0 },
+                '夜間 (00:00-06:00)': { start: 0, end: 6, totalTime: 0, count: 0, anomalies: 0 }
+            };
+
+            downTimeData.forEach(employeeData => {
+                employeeData.downTimes.forEach(dt => {
+                    const hour = parseInt(dt.completeTime.substring(0, 2));
+                    Object.keys(periodData).forEach(period => {
+                        const pData = periodData[period];
+                        if ((pData.start < pData.end && hour >= pData.start && hour < pData.end) ||
+                            (pData.start > pData.end && (hour >= pData.start || hour < pData.end))) {
+                            pData.totalTime += dt.downTime;
+                            pData.count++;
+                            if (dt.downTime > threshold) pData.anomalies++;
+                        }
+                    });
+                });
+            });
+
+            let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">';
+            Object.keys(periodData).forEach(period => {
+                const data = periodData[period];
+                if (data.count > 0) {
+                    const avgTime = data.totalTime / data.count;
+                    html += `
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px;">
+                            <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 10px;">${period}</div>
+                            <div style="font-size: 1.6em; font-weight: bold; margin-bottom: 5px;">${formatDuration(avgTime)}</div>
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;">平均停機時間</div>
+                            <hr style="margin: 10px 0; border: 1px solid rgba(255,255,255,0.3);">
+                            <div style="font-size: 0.85em; margin: 5px 0;">總計: ${formatDuration(data.totalTime)}</div>
+                            <div style="font-size: 0.85em;">記錄: ${data.count}筆 | 異常: ${data.anomalies}</div>
+                        </div>
+                    `;
+                }
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function renderDateTimeView(downTimeData, threshold, container) {
+            const dateTimeData = {};
+
+            downTimeData.forEach(employeeData => {
+                employeeData.downTimes.forEach(dt => {
+                    const dateTime = dt.completeTime.substring(0, 13); // YYYY-MM-DD HH
+                    if (!dateTimeData[dateTime]) {
+                        dateTimeData[dateTime] = { totalTime: 0, count: 0, anomalies: [] };
+                    }
+                    dateTimeData[dateTime].totalTime += dt.downTime;
+                    dateTimeData[dateTime].count++;
+                    if (dt.downTime > threshold) {
+                        dateTimeData[dateTime].anomalies.push(dt);
+                    }
+                });
+            });
+
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+            html += '<thead style="background: #e8eef7;"><tr>';
+            html += '<th style="padding: 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">日期 + 時間</th>';
+            html += '<th style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">平均停機</th>';
+            html += '<th style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">總停機</th>';
+            html += '<th style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">筆數</th>';
+            html += '<th style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">異常</th>';
+            html += '</tr></thead><tbody>';
+
+            Object.keys(dateTimeData).sort().reverse().forEach((dateTime, idx) => {
+                const data = dateTimeData[dateTime];
+                const avgTime = data.totalTime / data.count;
+                const bgColor = idx % 2 === 0 ? 'white' : '#fafafa';
+                const anomalyColor = data.anomalies.length > 0 ? '#ffebee' : bgColor;
+
+                html += `
+                    <tr style="background: ${anomalyColor}; border-bottom: 1px solid #eee;">
+                        <td style="padding: 8px; border: 1px solid #ddd;">${dateTime}:00-${dateTime}:59</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: 600; color: #667eea;">${formatDuration(avgTime)}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: 600; color: #764ba2;">${formatDuration(data.totalTime)}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${data.count}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: ${data.anomalies.length > 0 ? '#d32f2f' : '#4caf50'}; font-weight: 600;">${data.anomalies.length}${data.anomalies.length > 0 ? ' 🚨' : ''}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function buildAnomalyTable(anomalies) {
+            let html = `
+                <div style="margin-bottom: 20px; background: #ffe6e6; padding: 15px; border-radius: 8px; border-left: 4px solid #d32f2f; border-top: 3px solid #d32f2f;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 1.5em; margin-right: 10px;">⚠️</span>
+                        <div>
+                            <h3 style="color: #d32f2f; margin: 0; font-size: 1em;">異常警告 - 停機時間過長（>5分鐘）</h3>
+                            <p style="color: #b71c1c; margin: 2px 0; font-size: 0.85em;">共 ${anomalies.length} 個異常事件需要主管關注</p>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; background: white; border-collapse: collapse; font-size: 0.9em;">
+                            <thead style="background: #d32f2f; color: white;">
+                                <tr>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">員工</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">前包裹</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">完成時間</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">後包裹</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">開始時間</th>
+                                    <th style="padding: 6px 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">停機時間 🚨</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            anomalies.forEach((anomaly, idx) => {
+                const bgColor = idx % 2 === 0 ? '#fff3e0' : '#fff9c4';
+                html += `
+                    <tr style="background: ${bgColor}; border-bottom: 2px solid #ff6f00;">
+                        <td style="padding: 6px 8px; border: 1px solid #ddd; font-weight: 600; color: #d32f2f;">${anomaly.employeeCode}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #ddd;"><code style="font-size: 0.85em;">${anomaly.fromWaybill}</code></td>
+                        <td style="padding: 6px 8px; border: 1px solid #ddd; font-size: 0.85em;">${anomaly.completeTime}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #ddd;"><code style="font-size: 0.85em;">${anomaly.toWaybill}</code></td>
+                        <td style="padding: 6px 8px; border: 1px solid #ddd; font-size: 0.85em;">${anomaly.startTime}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #ddd; text-align: center; color: #d32f2f; font-weight: 700; font-size: 0.9em; background: #ffcdd2;">${anomaly.downTimeDisplay}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        function buildEmployeeNormalTable(employeeData, normalDownTimes) {
+            let html = `
+                <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 6px; border-left: 3px solid #667eea;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="color: #333; margin: 0; font-size: 0.95em;">👤 ${employeeData.employeeCode}</h4>
+                        <span style="font-size: 0.8em; color: #666;">正常記錄: ${normalDownTimes.length} 筆</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; background: white; border-collapse: collapse; font-size: 0.9em;">
+                            <thead style="background: #e8eef7;">
+                                <tr>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">前包裹</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">完成時間</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">後包裹</th>
+                                    <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">開始時間</th>
+                                    <th style="padding: 6px 8px; text-align: center; border: 1px solid #ddd; font-weight: 600; color: #667eea;">停機 ⏸️</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            normalDownTimes.forEach((dt, idx) => {
+                const bgColor = idx % 2 === 0 ? 'white' : '#fafafa';
+                html += `
+                    <tr style="background: ${bgColor}; border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.fromWaybill}</code></td>
+                        <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.completeTime}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.toWaybill}</code></td>
+                        <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.startTime}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #eee; text-align: center; color: #667eea; font-weight: 600; font-size: 0.85em;">${dt.downTimeDisplay}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
         function displayDownTimeAnalysis() {
             const downTimeData = calculateDownTime();
-            const ANOMALY_THRESHOLD = 300; // 5分鐘 = 300秒
+            lastDownTimeData = downTimeData;
 
             // 顯示排行
             const rankingContainer = document.getElementById('downTimeRankingContainer');
@@ -1751,115 +2069,8 @@
                 rankingContainer.innerHTML = html;
             }
 
-            // 顯示異常警告（超過5分鐘）
-            const detailsContainer = document.getElementById('downTimeDetailsContainer');
-            let anomalyHtml = '';
-            let normalHtml = '';
-
-            // 先收集所有異常
-            const allAnomalies = [];
-            downTimeData.forEach(employeeData => {
-                employeeData.downTimes.forEach(dt => {
-                    if (dt.downTime > ANOMALY_THRESHOLD) {
-                        allAnomalies.push({
-                            employeeCode: employeeData.employeeCode,
-                            ...dt
-                        });
-                    }
-                });
-            });
-
-            // 顯示異常警告部分
-            if (allAnomalies.length > 0) {
-                anomalyHtml = `
-                    <div style="margin-bottom: 20px; background: #ffe6e6; padding: 15px; border-radius: 8px; border-left: 4px solid #d32f2f; border-top: 3px solid #d32f2f;">
-                        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                            <span style="font-size: 1.5em; margin-right: 10px;">⚠️</span>
-                            <div>
-                                <h3 style="color: #d32f2f; margin: 0; font-size: 1em;">異常警告 - 停機時間過長（>5分鐘）</h3>
-                                <p style="color: #b71c1c; margin: 2px 0; font-size: 0.85em;">共 ${allAnomalies.length} 個異常事件需要主管關注</p>
-                            </div>
-                        </div>
-                        <div style="overflow-x: auto;">
-                            <table style="width: 100%; background: white; border-collapse: collapse; font-size: 0.9em;">
-                                <thead style="background: #d32f2f; color: white;">
-                                    <tr>
-                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">員工</th>
-                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">前包裹</th>
-                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">完成時間</th>
-                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">後包裹</th>
-                                        <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">開始時間</th>
-                                        <th style="padding: 6px 8px; text-align: center; border: 1px solid #ddd; font-weight: 600;">停機時間 🚨</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-
-                allAnomalies.forEach((anomaly, idx) => {
-                    const bgColor = idx % 2 === 0 ? '#fff3e0' : '#fff9c4';
-                    anomalyHtml += `
-                        <tr style="background: ${bgColor}; border-bottom: 2px solid #ff6f00;">
-                            <td style="padding: 6px 8px; border: 1px solid #ddd; font-weight: 600; color: #d32f2f;">${anomaly.employeeCode}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #ddd;"><code style="font-size: 0.85em;">${anomaly.fromWaybill}</code></td>
-                            <td style="padding: 6px 8px; border: 1px solid #ddd; font-size: 0.85em;">${anomaly.completeTime}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #ddd;"><code style="font-size: 0.85em;">${anomaly.toWaybill}</code></td>
-                            <td style="padding: 6px 8px; border: 1px solid #ddd; font-size: 0.85em;">${anomaly.startTime}</td>
-                            <td style="padding: 6px 8px; border: 1px solid #ddd; text-align: center; color: #d32f2f; font-weight: 700; font-size: 0.9em; background: #ffcdd2;">${anomaly.downTimeDisplay}</td>
-                        </tr>
-                    `;
-                });
-
-                anomalyHtml += '</tbody></table></div></div>';
-            }
-
-            // 顯示正常數據（≤5分鐘）
-            downTimeData.forEach(employeeData => {
-                const normalDownTimes = employeeData.downTimes.filter(dt => dt.downTime <= ANOMALY_THRESHOLD);
-
-                if (normalDownTimes.length > 0) {
-                    normalHtml += `
-                        <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 6px; border-left: 3px solid #667eea;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="color: #333; margin: 0; font-size: 0.95em;">👤 ${employeeData.employeeCode}</h4>
-                                <span style="font-size: 0.8em; color: #666;">正常記錄: ${normalDownTimes.length} 筆</span>
-                            </div>
-                            <div style="overflow-x: auto;">
-                                <table style="width: 100%; background: white; border-collapse: collapse; font-size: 0.9em;">
-                                    <thead style="background: #e8eef7;">
-                                        <tr>
-                                            <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">前包裹</th>
-                                            <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">完成時間</th>
-                                            <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">後包裹</th>
-                                            <th style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; font-weight: 600;">開始時間</th>
-                                            <th style="padding: 6px 8px; text-align: center; border: 1px solid #ddd; font-weight: 600; color: #667eea;">停機 ⏸️</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
-
-                    normalDownTimes.forEach((dt, idx) => {
-                        const bgColor = idx % 2 === 0 ? 'white' : '#fafafa';
-                        normalHtml += `
-                            <tr style="background: ${bgColor}; border-bottom: 1px solid #eee;">
-                                <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.fromWaybill}</code></td>
-                                <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.completeTime}</td>
-                                <td style="padding: 6px 8px; border: 1px solid #eee;"><code style="font-size: 0.85em;">${dt.toWaybill}</code></td>
-                                <td style="padding: 6px 8px; border: 1px solid #eee; font-size: 0.85em;">${dt.startTime}</td>
-                                <td style="padding: 6px 8px; border: 1px solid #eee; text-align: center; color: #667eea; font-weight: 600; font-size: 0.85em;">${dt.downTimeDisplay}</td>
-                            </tr>
-                        `;
-                    });
-
-                    normalHtml += '</tbody></table></div></div>';
-                }
-            });
-
-            const finalHtml = anomalyHtml + normalHtml;
-            if (finalHtml) {
-                detailsContainer.innerHTML = finalHtml;
-            } else {
-                detailsContainer.innerHTML = '<div class="empty-state"><p>沒有 down time 數據</p></div>';
-            }
+            // 根据当前视图类型渲染详细数据
+            renderDownTimeByView(downTimeData, currentDownTimeView);
         }
 
         function deleteRecord(id) {
