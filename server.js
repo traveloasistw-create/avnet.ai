@@ -13,8 +13,10 @@ import {
 } from './lib/config.js';
 import { CameraManager } from './lib/cameras.js';
 import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
-import { move as ptzMove, stop as ptzStop } from './lib/ptz.js';
+import { move as ptzMove, stop as ptzStop, reboot as ptzReboot } from './lib/ptz.js';
 import { logAction, recentLogs } from './lib/audit.js';
+import { loadNotify, saveNotify, sendTelegram, pushAlert } from './lib/notify.js';
+import { MotionWatcher } from './lib/motion.js';
 import {
   ensureAdmin,
   getSessionSecret,
@@ -54,6 +56,20 @@ manager.load(cameras);
 const cleanupTimer = recording.enabled
   ? startCleanupJob(recording.retentionDays)
   : null;
+
+// ---- 移動偵測 → Telegram 推播 ----
+const motion = new MotionWatcher((camera) => {
+  const when = new Date().toLocaleString('zh-TW', { hour12: false });
+  pushAlert(`⚠️ 偵測到動靜：${camera.name}\n時間：${when}`);
+  logAction('系統', '移動偵測', camera.name);
+});
+function reconcileMotion() {
+  for (const c of manager.list()) {
+    if (c.enabled !== false && c.motion) motion.start(c);
+    else motion.stop(c.id);
+  }
+}
+reconcileMotion();
 
 // 產生一個不重複的攝影機代號
 function newCameraId() {
@@ -204,6 +220,45 @@ app.post('/api/ptz/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// 重新啟動相機（ONVIF，僅管理員）
+app.post('/api/admin/cameras/:id/reboot', requireAdmin, async (req, res) => {
+  const cam = manager.get(req.params.id);
+  if (!cam) return res.status(404).json({ error: '找不到攝影機' });
+  try {
+    await ptzReboot(cam);
+    logAction(req.session.username, '重啟相機', cam.name);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message || '重啟失敗（相機可能不支援）' });
+  }
+});
+
+// ---- 通知設定（Telegram，僅管理員） ----
+app.get('/api/admin/notify', requireAdmin, (req, res) => {
+  const t = loadNotify().telegram;
+  res.json({ token: t.token || '', chatId: t.chatId || '', enabled: !!t.enabled });
+});
+app.post('/api/admin/notify', requireAdmin, (req, res) => {
+  const { token, chatId, enabled } = req.body || {};
+  saveNotify({
+    telegram: {
+      token: String(token || '').trim(),
+      chatId: String(chatId || '').trim(),
+      enabled: !!enabled,
+    },
+  });
+  logAction(req.session.username, '更新通知設定');
+  res.json({ ok: true });
+});
+app.post('/api/admin/notify/test', requireAdmin, async (req, res) => {
+  try {
+    await sendTelegram('✅ 旅遊綠洲監視器：這是一則測試通知，設定成功！');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.get('/api/recordings/:id/dates', guardCamera, (req, res) =>
   res.json(listDates(req.params.id))
 );
@@ -250,13 +305,14 @@ app.get('/api/admin/cameras', requireAdmin, (req, res) =>
       url: c.url,
       enabled: c.enabled !== false,
       record: c.record !== false,
+      motion: !!c.motion,
       status: manager.status(c.id),
     }))
   )
 );
 
 app.post('/api/admin/cameras', requireAdmin, (req, res) => {
-  const { name, url, enabled, record } = req.body || {};
+  const { name, url, enabled, record, motion: mo } = req.body || {};
   if (!name || !url) {
     return res.status(400).json({ error: '名稱與 RTSP 網址為必填' });
   }
@@ -268,8 +324,10 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
       subUrl: deriveSub(url) || undefined,
       enabled: enabled !== false,
       record: record !== false,
+      motion: !!mo,
     });
     logAction(req.session.username, '新增攝影機', name);
+    reconcileMotion();
     res.json({ ok: true, id: cam.id });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -277,15 +335,17 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
 });
 
 app.put('/api/admin/cameras/:id', requireAdmin, (req, res) => {
-  const { name, url, enabled, record } = req.body || {};
+  const { name, url, enabled, record, motion: mo } = req.body || {};
   const patch = {};
   if (typeof name === 'string') patch.name = name;
   if (typeof url === 'string' && url) patch.url = url;
   if (typeof enabled === 'boolean') patch.enabled = enabled;
   if (typeof record === 'boolean') patch.record = record;
+  if (typeof mo === 'boolean') patch.motion = mo;
   const ok = manager.update(req.params.id, patch);
   if (!ok) return res.status(404).json({ error: '找不到攝影機' });
   logAction(req.session.username, '修改攝影機', patch.name || req.params.id);
+  reconcileMotion();
   res.json({ ok: true });
 });
 
@@ -295,6 +355,7 @@ app.delete('/api/admin/cameras/:id', requireAdmin, (req, res) => {
   const name = cam ? cam.name : id;
   const ok = manager.remove(id);
   if (!ok) return res.status(404).json({ error: '找不到攝影機' });
+  motion.stop(id);
   logAction(req.session.username, '刪除攝影機', name);
   // 一併從所有使用者的授權清單移除這支攝影機
   const users = loadUsers();
@@ -422,6 +483,7 @@ const server = app.listen(PORT, () => {
 function shutdown() {
   console.log('\n正在關閉…');
   if (cleanupTimer) clearInterval(cleanupTimer);
+  motion.stopAll();
   manager.stopAll();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000);

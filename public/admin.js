@@ -215,9 +215,50 @@ async function loadDisk() {
   el.textContent = `💾 主機硬碟：剩餘 ${fmtGB(d.free)} / 共 ${fmtGB(d.total)}（${pctFree}%）${warn}`;
 }
 
+// 通知設定（Telegram）
+async function loadNotify() {
+  try {
+    const n = await getJSON('/api/admin/notify');
+    document.getElementById('ntgToken').value = n.token || '';
+    document.getElementById('ntgChat').value = n.chatId || '';
+    document.getElementById('ntgEnabled').checked = !!n.enabled;
+  } catch {
+    /* 忽略 */
+  }
+}
+document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('ntgMsg');
+  try {
+    await getJSON('/api/admin/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: document.getElementById('ntgToken').value.trim(),
+        chatId: document.getElementById('ntgChat').value.trim(),
+        enabled: document.getElementById('ntgEnabled').checked,
+      }),
+    });
+    msg.textContent = '已儲存 ✓';
+  } catch (err) {
+    msg.textContent = '儲存失敗：' + err.message;
+  }
+});
+document.getElementById('ntgTest').addEventListener('click', async () => {
+  const msg = document.getElementById('ntgMsg');
+  msg.textContent = '發送中…（請先按儲存）';
+  try {
+    await getJSON('/api/admin/notify/test', { method: 'POST' });
+    msg.textContent = '✅ 已發送！請看你的 Telegram。';
+  } catch (err) {
+    msg.textContent = '❌ 發送失敗：' + err.message;
+  }
+});
+
 async function init() {
   const me = await getJSON('/api/me');
   document.getElementById('userLabel').textContent = `👤 ${me.username}`;
+  loadNotify();
   const info = await getJSON('/api/recording-info');
   recordingEnabled = !!info.enabled;
   if (!recordingEnabled) {

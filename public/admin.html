@@ -33,6 +33,20 @@
       </section>
 
       <section class="admin-panel">
+        <h2>通知設定（Telegram 推播）</h2>
+        <form id="notifyForm" class="admin-form">
+          <label class="chk"><input id="ntgEnabled" type="checkbox" /> 啟用移動偵測推播</label>
+          <label>Bot Token <input id="ntgToken" type="text" placeholder="從 @BotFather 取得" /></label>
+          <label>Chat ID <input id="ntgChat" type="text" placeholder="你的聊天室 ID" /></label>
+          <div class="user-actions">
+            <button type="submit">儲存</button>
+            <button type="button" id="ntgTest">發送測試訊息</button>
+          </div>
+          <p id="ntgMsg" class="user-note"></p>
+        </form>
+      </section>
+
+      <section class="admin-panel">
         <h2>新增同事帳號</h2>
         <form id="addForm" class="admin-form">
           <label>帳號 <input id="newUser" type="text" required /></label>

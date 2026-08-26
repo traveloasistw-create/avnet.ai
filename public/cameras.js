@@ -61,6 +61,13 @@ async function loadCameras() {
     enCb.checked = cam.enabled;
     enLabel.append(enCb, document.createTextNode(' 啟用'));
 
+    const moLabel = document.createElement('label');
+    moLabel.className = 'chk';
+    const moCb = document.createElement('input');
+    moCb.type = 'checkbox';
+    moCb.checked = !!cam.motion;
+    moLabel.append(moCb, document.createTextNode(' 移動偵測通知'));
+
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '儲存';
     saveBtn.addEventListener('click', async () => {
@@ -73,12 +80,31 @@ async function loadCameras() {
             url: urlInput.value.trim(),
             record: recCb.checked,
             enabled: enCb.checked,
+            motion: moCb.checked,
           }),
         });
         await loadCameras();
       } catch (err) {
         alert('儲存失敗：' + err.message);
       }
+    });
+
+    const rebootBtn = document.createElement('button');
+    rebootBtn.textContent = '重啟相機';
+    rebootBtn.addEventListener('click', async () => {
+      if (!confirm(`確定要重新啟動「${cam.name}」？（相機會斷線約 1 分鐘）`)) return;
+      rebootBtn.disabled = true;
+      rebootBtn.textContent = '重啟中…';
+      try {
+        await getJSON(`/api/admin/cameras/${encodeURIComponent(cam.id)}/reboot`, {
+          method: 'POST',
+        });
+        alert('已送出重啟指令，相機稍後會重新上線。');
+      } catch (err) {
+        alert('重啟失敗：' + err.message + '（相機可能不支援 ONVIF 重啟）');
+      }
+      rebootBtn.disabled = false;
+      rebootBtn.textContent = '重啟相機';
     });
 
     const delBtn = document.createElement('button');
@@ -98,7 +124,7 @@ async function loadCameras() {
 
     const row = document.createElement('div');
     row.className = 'user-actions';
-    row.append(nameInput, urlInput, recLabel, enLabel, saveBtn, delBtn);
+    row.append(nameInput, urlInput, recLabel, enLabel, moLabel, saveBtn, rebootBtn, delBtn);
     card.appendChild(row);
     list.appendChild(card);
   }
