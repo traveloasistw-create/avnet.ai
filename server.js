@@ -178,6 +178,7 @@ app.get('/api/cameras', (req, res) => {
         record: recording.enabled && c.record !== false,
         hasSub: !!(c.subUrl || deriveSub(c.url)), // 有子串流才顯示畫質切換
         quality: c.useSub ? 'sub' : 'main',
+        onDemand: !!c.onDemand, // 省電模式：需要點擊喚醒才連線
         src: `/streams/${c.id}/index.m3u8`,
       }))
   );
@@ -290,6 +291,7 @@ app.get('/api/snapshot/:id', requireAdmin, (req, res) => {
 app.use('/streams', guardCamera, (req, res, next) => {
   const id = String(req.path).split('/').filter(Boolean)[0];
   touch(req.session.username, id);
+  manager.onStreamAccess(id); // 省電模式：有人在看就保持喚醒
   next();
 });
 app.use('/streams', express.static(STREAMS_DIR));
@@ -306,13 +308,14 @@ app.get('/api/admin/cameras', requireAdmin, (req, res) =>
       enabled: c.enabled !== false,
       record: c.record !== false,
       motion: !!c.motion,
+      onDemand: !!c.onDemand,
       status: manager.status(c.id),
     }))
   )
 );
 
 app.post('/api/admin/cameras', requireAdmin, (req, res) => {
-  const { name, url, enabled, record, motion: mo } = req.body || {};
+  const { name, url, enabled, record, motion: mo, onDemand } = req.body || {};
   if (!name || !url) {
     return res.status(400).json({ error: '名稱與 RTSP 網址為必填' });
   }
@@ -325,6 +328,7 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
       enabled: enabled !== false,
       record: record !== false,
       motion: !!mo,
+      onDemand: !!onDemand,
     });
     logAction(req.session.username, '新增攝影機', name);
     reconcileMotion();
@@ -335,13 +339,14 @@ app.post('/api/admin/cameras', requireAdmin, (req, res) => {
 });
 
 app.put('/api/admin/cameras/:id', requireAdmin, (req, res) => {
-  const { name, url, enabled, record, motion: mo } = req.body || {};
+  const { name, url, enabled, record, motion: mo, onDemand } = req.body || {};
   const patch = {};
   if (typeof name === 'string') patch.name = name;
   if (typeof url === 'string' && url) patch.url = url;
   if (typeof enabled === 'boolean') patch.enabled = enabled;
   if (typeof record === 'boolean') patch.record = record;
   if (typeof mo === 'boolean') patch.motion = mo;
+  if (typeof onDemand === 'boolean') patch.onDemand = onDemand;
   const ok = manager.update(req.params.id, patch);
   if (!ok) return res.status(404).json({ error: '找不到攝影機' });
   logAction(req.session.username, '修改攝影機', patch.name || req.params.id);

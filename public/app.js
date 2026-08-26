@@ -319,8 +319,70 @@ function createTile(cam) {
 
   grid.appendChild(tile);
 
-  attachStream(cam, video, tile);
-  players.set(cam.id, { video, tile });
+  const entry = { video, tile, onDemand: !!cam.onDemand, awake: false };
+  players.set(cam.id, entry);
+
+  if (cam.onDemand) {
+    // 省電模式：平時不連線，等使用者點「喚醒」才開始看，點「關閉」就休眠
+    const initDot = tile.querySelector('.dot');
+    if (initDot) initDot.className = 'dot sleeping';
+    const wake = document.createElement('div');
+    wake.className = 'wake-overlay';
+    wake.innerHTML =
+      '<div class="wake-box">' +
+      '<div class="wake-icon">🔋</div>' +
+      '<button class="wake-btn" type="button">▶ 喚醒查看</button>' +
+      '<div class="wake-hint">省電模式：平時不連線、不耗電</div>' +
+      '</div>';
+
+    const sleepBtn = document.createElement('button');
+    sleepBtn.className = 'sleep-btn hidden';
+    sleepBtn.type = 'button';
+    sleepBtn.textContent = '💤 關閉休眠';
+    sleepBtn.title = '關閉並休眠（省電）';
+
+    function goAwake() {
+      entry.awake = true;
+      wake.classList.add('hidden');
+      sleepBtn.classList.remove('hidden');
+      attachStream(cam, video, tile);
+    }
+    function goSleep() {
+      entry.awake = false;
+      if (entry.hls) {
+        try {
+          entry.hls.destroy();
+        } catch {
+          /* 忽略 */
+        }
+        entry.hls = null;
+      }
+      try {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      } catch {
+        /* 忽略 */
+      }
+      clearState(tile);
+      sleepBtn.classList.add('hidden');
+      wake.classList.remove('hidden');
+    }
+
+    wake.addEventListener('click', (e) => e.stopPropagation());
+    wake.querySelector('.wake-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      goAwake();
+    });
+    sleepBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      goSleep();
+    });
+
+    tile.append(wake, sleepBtn);
+  } else {
+    attachStream(cam, video, tile);
+  }
 }
 
 function showState(tile, msg) {
@@ -421,6 +483,13 @@ async function pollStatus() {
     for (const cam of cameras) {
       const rec = players.get(cam.id);
       if (!rec) continue;
+      // 省電模式且休眠中：不算離線，燈號顯示休眠中
+      if (rec.onDemand && !rec.awake) {
+        const dot = rec.tile.querySelector('.dot');
+        if (dot) dot.className = 'dot sleeping';
+        rec.tile.classList.remove('offline');
+        continue;
+      }
       const dot = rec.tile.querySelector('.dot');
       if (dot) dot.className = `dot ${cam.status}`;
       if (cam.status === 'error' || cam.status === 'stopped') {

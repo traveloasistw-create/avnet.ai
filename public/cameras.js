@@ -68,6 +68,13 @@ async function loadCameras() {
     moCb.checked = !!cam.motion;
     moLabel.append(moCb, document.createTextNode(' 移動偵測通知'));
 
+    const odLabel = document.createElement('label');
+    odLabel.className = 'chk';
+    const odCb = document.createElement('input');
+    odCb.type = 'checkbox';
+    odCb.checked = !!cam.onDemand;
+    odLabel.append(odCb, document.createTextNode(' 省電模式（點擊喚醒）'));
+
     const saveBtn = document.createElement('button');
     saveBtn.textContent = '儲存';
     saveBtn.addEventListener('click', async () => {
@@ -81,6 +88,7 @@ async function loadCameras() {
             record: recCb.checked,
             enabled: enCb.checked,
             motion: moCb.checked,
+            onDemand: odCb.checked,
           }),
         });
         await loadCameras();
@@ -124,7 +132,7 @@ async function loadCameras() {
 
     const row = document.createElement('div');
     row.className = 'user-actions';
-    row.append(nameInput, urlInput, recLabel, enLabel, moLabel, saveBtn, rebootBtn, delBtn);
+    row.append(nameInput, urlInput, recLabel, enLabel, moLabel, odLabel, saveBtn, rebootBtn, delBtn);
     card.appendChild(row);
     list.appendChild(card);
   }
@@ -142,11 +150,13 @@ document.getElementById('addCamForm').addEventListener('submit', async (e) => {
         name: document.getElementById('camName').value.trim(),
         url: document.getElementById('camUrl').value.trim(),
         record: document.getElementById('camRecord').checked,
+        onDemand: document.getElementById('camOnDemand').checked,
       }),
     });
     document.getElementById('camName').value = '';
     document.getElementById('camUrl').value = '';
     document.getElementById('camRecord').checked = true;
+    document.getElementById('camOnDemand').checked = false;
     await loadCameras();
   } catch (e2) {
     err.textContent = e2.message;
