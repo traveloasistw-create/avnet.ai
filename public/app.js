@@ -419,8 +419,12 @@ function attachStream(cam, video, tile) {
 
   if (window.Hls && window.Hls.isSupported()) {
     const hls = new Hls({
-      liveSyncDurationCount: 2, // 盡量貼近即時
-      maxBufferLength: 8,
+      lowLatencyMode: true, // 低延遲模式
+      liveSyncDurationCount: 2, // 只落後 2 段（約 2 秒）就播，盡量貼近即時
+      liveMaxLatencyDurationCount: 6, // 落後太多就跳回即時
+      maxLiveSyncPlaybackRate: 1.5, // 落後時自動小幅加速追上
+      maxBufferLength: 4,
+      backBufferLength: 4,
       manifestLoadingMaxRetry: Infinity,
       manifestLoadingRetryDelay: 3000,
       levelLoadingMaxRetry: Infinity,
