@@ -81,6 +81,9 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
   echo      http://!ip!:8080
 )
 echo.
+echo   TIP: to also make the dashboard open on
+echo   screen at boot, run  install-autoopen.bat
+echo.
 echo   To stop the system:  run  stop.bat
 echo   To turn off autostart:  run  uninstall-autostart.bat
 echo ============================================
