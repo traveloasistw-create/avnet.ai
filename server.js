@@ -30,6 +30,7 @@ import {
   verifyPassword,
   allowedCameraIds,
   canAccess,
+  usesDefaultPassword,
 } from './lib/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -88,6 +89,35 @@ function deriveSub(url) {
   return null;
 }
 
+// ---- 登入失敗保護：防止有人不斷猜密碼（暴力破解） ----
+const loginFails = new Map(); // "IP|帳號" -> { count, until }
+const MAX_FAILS = 5; // 連續錯 5 次
+const LOCK_MS = 15 * 60 * 1000; // 鎖 15 分鐘
+
+function loginKey(req, username) {
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || '';
+  return `${ip}|${String(username || '').toLowerCase()}`;
+}
+
+// 還要鎖幾分鐘（0 = 沒被鎖）
+function lockedMinutes(key) {
+  const e = loginFails.get(key);
+  if (!e || !e.until) return 0;
+  if (e.until > Date.now()) return Math.ceil((e.until - Date.now()) / 60000);
+  loginFails.delete(key); // 鎖定時間已過
+  return 0;
+}
+
+function noteLoginFail(key) {
+  const e = loginFails.get(key) || { count: 0, until: 0 };
+  e.count += 1;
+  if (e.count >= MAX_FAILS) {
+    e.until = Date.now() + LOCK_MS;
+    e.count = 0;
+  }
+  loginFails.set(key, e);
+}
+
 // ---- 在線狀態追蹤：誰在線上、正在看哪些相機 ----
 const presence = new Map(); // username -> { lastSeen, cameras: Map<id, ts> }
 const ONLINE_WINDOW_MS = 15000; // 15 秒內有活動就算在線
@@ -129,10 +159,23 @@ app.use(
 // ---- 登入 / 登出 / 我是誰 ----
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};
+  const key = loginKey(req, username);
+
+  const wait = lockedMinutes(key);
+  if (wait) {
+    return res
+      .status(429)
+      .json({ error: `嘗試次數過多，請 ${wait} 分鐘後再試` });
+  }
+
   const user = findUser(username);
   if (!user || !verifyPassword(password || '', user.password)) {
+    noteLoginFail(key);
+    logAction(String(username || '(空白)'), '登入失敗');
     return res.status(401).json({ error: '帳號或密碼錯誤' });
   }
+
+  loginFails.delete(key); // 登入成功，清掉失敗紀錄
   req.session.username = user.username;
   logAction(user.username, '登入');
   res.json({ ok: true });
@@ -148,7 +191,11 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/me', requireLogin, (req, res) => {
   const user = currentUser(req);
-  res.json({ username: user.username, isAdmin: !!user.isAdmin });
+  res.json({
+    username: user.username,
+    isAdmin: !!user.isAdmin,
+    weakPassword: usesDefaultPassword(user), // 還在用預設密碼 admin
+  });
 });
 
 // ---- 此行以下全部需要登入 ----
