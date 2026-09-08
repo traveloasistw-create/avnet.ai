@@ -6,3 +6,4 @@ config/cameras.json
 config/users.json
 *.log
 .DS_Store
+run-hidden.vbs
