@@ -52,6 +52,19 @@
             position: absolute;
             top: 20px;
             right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .version-badge {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         #languageSelect {
@@ -516,6 +529,7 @@
         <button id="oneDriveToggle" class="admin-button" onclick="connectOneDrive()" style="margin-right: 10px; padding: 8px 12px; background: rgba(0,120,215,0.3); color: white; border: 2px solid rgba(0,120,215,0.6); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">☁️ OneDrive</button>
         <button id="adminToggle" class="admin-button" onclick="showAdminLogin()" style="margin-right: 10px; padding: 8px 12px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">🔐 Admin</button>
         <button id="logoutButton" class="admin-button" onclick="logout()" style="margin-right: 10px; padding: 8px 12px; background: rgba(244,67,54,0.3); color: white; border: 2px solid rgba(244,67,54,0.6); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s; display: none;">🚪 登出</button>
+        <div class="version-badge">v1.2</div>
         <select id="languageSelect" onchange="setLanguage(this.value)">
             <option value="zh-TW">繁體中文</option>
             <option value="en">English</option>
@@ -565,11 +579,8 @@
 
     <div class="container">
         <header>
-            <h1 data-i18n="title">📦 包货管理系统</h1>
+            <h1 data-i18n="title">📦 包货管理系统 <span style="font-size: 0.5em; color: #999;">(v1.2)</span></h1>
             <p data-i18n="subtitle">扫码输入 + 异常查询 | 电脑 + 手机通用</p>
-            <div style="font-size: 0.75em; color: #999; margin-top: 5px; text-align: center;">
-                版本 v1.2 | CSV 導出 | 完全離線支援
-            </div>
         </header>
 
         <div class="tabs">
