@@ -946,3 +946,27 @@ body.no-select video {
   color: inherit;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
+
+.scan-list {
+  margin-top: 10px;
+}
+.scan-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+}
+.scan-row strong {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  min-width: 130px;
+}
+.scan-row .probe-good,
+.scan-row .user-note {
+  margin: 0;
+}
+.scan-pick {
+  margin-left: auto;
+}

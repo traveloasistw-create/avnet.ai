@@ -191,6 +191,66 @@ document.getElementById('probeForm').addEventListener('submit', async (e) => {
   btn.textContent = '🔍 開始偵測';
 });
 
+// ---- 掃描整個區網，自動找出相機 ----
+document.getElementById('scanBtn').addEventListener('click', async () => {
+  const out = document.getElementById('probeResult');
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.textContent = '掃描中…（約 30～60 秒，請稍候）';
+  out.innerHTML = '<p class="user-note">正在逐一測試網段內的 254 個位址…</p>';
+
+  try {
+    const r = await getJSON('/api/admin/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    renderScan(r, out);
+  } catch (err) {
+    out.innerHTML = `<p class="login-err">掃描失敗：${err.message}</p>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '📡 掃描區網找相機';
+});
+
+function renderScan(r, out) {
+  if (!r.found.length) {
+    out.innerHTML =
+      `<p class="probe-bad">在 ${r.subnet}0/24 沒有找到任何相機。</p>` +
+      '<p class="user-note">可能相機不在這個網段，或它沒有開放任何常見的相機連接埠。</p>';
+    return;
+  }
+
+  const rows = r.found
+    .map((f) => {
+      const tag = f.hasRtsp
+        ? '<span class="probe-good">✅ 有 RTSP，很可能是相機</span>'
+        : '<span class="user-note">可能是相機或其他裝置</span>';
+      return (
+        '<div class="scan-row">' +
+        `<strong>${f.host}</strong>` +
+        `<span class="user-note">開啟的埠：${f.ports.join('、')}</span>` +
+        tag +
+        `<button type="button" class="scan-pick" data-ip="${f.host}">用這台偵測</button>` +
+        '</div>'
+      );
+    })
+    .join('');
+
+  out.innerHTML =
+    `<p class="probe-good">在 ${r.subnet}0/24 找到 ${r.found.length} 台可能的相機：</p>` +
+    '<div class="scan-list">' + rows + '</div>';
+
+  // 點「用這台偵測」就把 IP 填進上面的欄位並直接送出
+  out.querySelectorAll('.scan-pick').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.getElementById('probeHost').value = b.dataset.ip;
+      document.getElementById('probeForm').requestSubmit();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
 function renderProbe(r, out) {
   const parts = [];
 

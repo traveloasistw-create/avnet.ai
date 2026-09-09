@@ -14,7 +14,11 @@ import {
 import { CameraManager } from './lib/cameras.js';
 import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
 import { move as ptzMove, stop as ptzStop, reboot as ptzReboot } from './lib/ptz.js';
-import { probe as probeCamera } from './lib/probe.js';
+import {
+  probe as probeCamera,
+  scanSubnet,
+  localSubnet,
+} from './lib/probe.js';
 import { logAction, recentLogs } from './lib/audit.js';
 import { loadNotify, saveNotify, sendTelegram, pushAlert } from './lib/notify.js';
 import { MotionWatcher } from './lib/motion.js';
@@ -361,6 +365,26 @@ app.get('/api/admin/cameras', requireAdmin, (req, res) =>
     }))
   )
 );
+
+// 掃描整個區網，把看起來像相機的機器找出來（僅管理員）
+app.post('/api/admin/scan', requireAdmin, async (req, res) => {
+  let prefix = String((req.body && req.body.subnet) || '').trim();
+  if (!prefix) prefix = localSubnet(); // 沒指定就用這台主機自己的網段
+  if (!prefix) {
+    return res.status(400).json({ error: '找不到網段，請手動輸入，例如 192.168.213.' });
+  }
+  if (!prefix.endsWith('.')) prefix += '.';
+  if (!/^(\d{1,3}\.){3}$/.test(prefix)) {
+    return res.status(400).json({ error: '網段格式不正確，例如 192.168.213.' });
+  }
+  try {
+    const found = await scanSubnet(prefix);
+    logAction(req.session.username, '掃描區網', prefix + '0/24');
+    res.json({ subnet: prefix, found });
+  } catch (err) {
+    res.status(500).json({ error: err.message || '掃描失敗' });
+  }
+});
 
 // 探測一台相機：測連接埠 + 問 ONVIF 要 RTSP 網址（僅管理員）
 app.post('/api/admin/probe', requireAdmin, async (req, res) => {
