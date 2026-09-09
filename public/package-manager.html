@@ -2282,46 +2282,39 @@
                 headerRow = ['寄件編號', '員工', '狀態', '時間', '時間戳'];
             }
 
-            const data = [
-                headerRow,
-                ...allRecords.map(r => [
+            // 生成 CSV 內容
+            let csvContent = headerRow.map(h => `"${h}"`).join(',') + '\n';
+            csvContent += allRecords.map(r => {
+                const values = [
                     r.waybill,
                     r.operator || '-',
                     r.status === 'start' ? '開始' : '完成',
                     formatTime(r.timestamp),
                     r.timestamp
-                ])
-            ];
+                ];
+                return values.map(v => `"${v}"`).join(',');
+            }).join('\n');
 
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            let sheetName;
-            if (currentLanguage === 'en') {
-                sheetName = 'All Records';
-            } else if (currentLanguage === 'id') {
-                sheetName = 'Semua Catatan';
-            } else {
-                sheetName = '全部記錄';
-            }
-            XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-            ws['!cols'] = [
-                { wch: 20 },
-                { wch: 15 },
-                { wch: 12 },
-                { wch: 18 },
-                { wch: 20 }
-            ];
+            // 下載 CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
 
             let fileName;
             if (currentLanguage === 'en') {
-                fileName = `all_records_${new Date().toISOString().split('T')[0]}.xlsx`;
+                fileName = `all_records_${new Date().toISOString().split('T')[0]}.csv`;
             } else if (currentLanguage === 'id') {
-                fileName = `semua_catatan_${new Date().toISOString().split('T')[0]}.xlsx`;
+                fileName = `semua_catatan_${new Date().toISOString().split('T')[0]}.csv`;
             } else {
-                fileName = `全部記錄_${new Date().toISOString().split('T')[0]}.xlsx`;
+                fileName = `全部記錄_${new Date().toISOString().split('T')[0]}.csv`;
             }
-            XLSX.writeFile(wb, fileName);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
             showSuccessMessage(`✓ 已導出 ${allRecords.length} 條記錄`);
 
@@ -2334,7 +2327,8 @@
                     `2. 複製 ${fileName}\n` +
                     `3. 貼到 OneDrive 資料夾：\n` +
                     `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
-                    `💡 其他電腦就能導入這個檔案了`
+                    `💡 其他電腦就能導入這個檔案了\n` +
+                    `📝 提示：CSV 檔案可用 Excel 或文字編輯器打開`
                 );
             }, 500);
         }
