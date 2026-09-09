@@ -2117,6 +2117,20 @@
             URL.revokeObjectURL(url);
 
             showSuccessMessage(`✓ 已導出 ${records.length} 條記錄到 JSON`);
+
+            // 顯示 OneDrive 複製指引
+            const jsonFileName = `package_manager_${new Date().toISOString().split('T')[0]}.json`;
+            setTimeout(() => {
+                alert(
+                    `✅ 檔案已下載：${jsonFileName}\n\n` +
+                    `📁 下一步：\n` +
+                    `1. 打開下載資料夾\n` +
+                    `2. 複製 ${jsonFileName}\n` +
+                    `3. 貼到 OneDrive 資料夾：\n` +
+                    `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
+                    `💡 其他電腦就能導入這個檔案了`
+                );
+            }, 500);
         }
 
         function triggerImportJSON() {
@@ -2230,6 +2244,19 @@
             XLSX.writeFile(wb, fileName);
 
             showSuccessMessage(`${t('exportSuccess')} ${pairs.length} ${t('exportNotice')}`);
+
+            // 顯示 OneDrive 複製指引
+            setTimeout(() => {
+                alert(
+                    `✅ 檔案已下載：${fileName}\n\n` +
+                    `📁 下一步：\n` +
+                    `1. 打開下載資料夾\n` +
+                    `2. 複製 ${fileName}\n` +
+                    `3. 貼到 OneDrive 資料夾：\n` +
+                    `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
+                    `💡 其他電腦就能導入這個檔案了`
+                );
+            }, 500);
         }
 
         function clearAllData() {
@@ -2652,6 +2679,19 @@
             XLSX.writeFile(wb, fileName);
 
             showSuccessMessage(`${t('exportSuccess')} ${filteredRecords.length} ${t('exportNotice')}`);
+
+            // 顯示 OneDrive 複製指引
+            setTimeout(() => {
+                alert(
+                    `✅ 檔案已下載：${fileName}\n\n` +
+                    `📁 下一步：\n` +
+                    `1. 打開下載資料夾\n` +
+                    `2. 複製 ${fileName}\n` +
+                    `3. 貼到 OneDrive 資料夾：\n` +
+                    `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
+                    `💡 其他電腦就能導入這個檔案了`
+                );
+            }, 500);
         }
 
         function showShiftStats() {
