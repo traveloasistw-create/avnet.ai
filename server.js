@@ -14,6 +14,7 @@ import {
 import { CameraManager } from './lib/cameras.js';
 import { listDates, listRecordings, startCleanupJob } from './lib/recordings.js';
 import { move as ptzMove, stop as ptzStop, reboot as ptzReboot } from './lib/ptz.js';
+import { probe as probeCamera } from './lib/probe.js';
 import { logAction, recentLogs } from './lib/audit.js';
 import { loadNotify, saveNotify, sendTelegram, pushAlert } from './lib/notify.js';
 import { MotionWatcher } from './lib/motion.js';
@@ -360,6 +361,26 @@ app.get('/api/admin/cameras', requireAdmin, (req, res) =>
     }))
   )
 );
+
+// 探測一台相機：測連接埠 + 問 ONVIF 要 RTSP 網址（僅管理員）
+app.post('/api/admin/probe', requireAdmin, async (req, res) => {
+  const { host, username, password } = req.body || {};
+  const ip = String(host || '').trim();
+  if (!/^[a-zA-Z0-9.\-]+$/.test(ip)) {
+    return res.status(400).json({ error: '請輸入正確的 IP 位址' });
+  }
+  try {
+    const result = await probeCamera(
+      ip,
+      String(username || 'admin'),
+      String(password || '')
+    );
+    logAction(req.session.username, '探測相機', ip);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message || '探測失敗' });
+  }
+});
 
 app.post('/api/admin/cameras', requireAdmin, (req, res) => {
   const { name, url, enabled, record, motion: mo, onDemand } = req.body || {};

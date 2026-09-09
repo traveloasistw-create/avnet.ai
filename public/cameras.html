@@ -25,6 +25,21 @@
 
     <main class="admin">
       <section class="admin-panel">
+        <h2>偵測攝影機</h2>
+        <p class="user-note">
+          不確定某台相機支不支援即時串流（RTSP）？輸入它的 IP，系統會實際去測，
+          並嘗試直接向相機詢問它的串流網址。
+        </p>
+        <form id="probeForm" class="admin-form">
+          <label>相機 IP <input id="probeHost" type="text" placeholder="例如：192.168.213.38" required /></label>
+          <label>帳號 <input id="probeUser" type="text" value="admin" /></label>
+          <label>密碼 <input id="probePass" type="text" placeholder="相機密碼（沒有可留空）" /></label>
+          <button type="submit" id="probeBtn">🔍 開始偵測</button>
+        </form>
+        <div id="probeResult" class="probe-result"></div>
+      </section>
+
+      <section class="admin-panel">
         <h2>新增攝影機</h2>
         <form id="addCamForm" class="admin-form">
           <label>名稱 <input id="camName" type="text" placeholder="例如：大門" required /></label>

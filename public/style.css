@@ -902,3 +902,47 @@ body.no-select video {
   flex: 1;
   min-width: 160px;
 }
+
+/* ---- 攝影機偵測結果 ---- */
+.probe-result {
+  margin-top: 12px;
+}
+.probe-good {
+  color: var(--ok);
+  font-weight: 700;
+  margin: 6px 0;
+}
+.probe-bad {
+  color: var(--warn);
+  font-weight: 700;
+  margin: 6px 0;
+}
+.probe-uri {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  word-break: break-all;
+  user-select: all;
+}
+.probe-ports {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+.probe-row {
+  display: grid;
+  grid-template-columns: 14px 56px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.probe-row strong {
+  color: inherit;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
