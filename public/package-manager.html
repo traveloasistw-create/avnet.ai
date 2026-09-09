@@ -544,8 +544,13 @@
             <h1 style="color: #333; margin-bottom: 10px; font-size: 1.8em;">包貨管理系統</h1>
             <p style="color: #999; margin-bottom: 40px; font-size: 0.95em;">Package Management System</p>
 
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #555; font-weight: 600; margin-bottom: 10px; text-align: left;">👤 帳號</label>
+                <input type="text" id="appLoginUsername" placeholder="輸入帳號 (例: admin)" style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1.05em; transition: all 0.3s;" onkeypress="if(event.key==='Enter') document.getElementById('appLoginPassword').focus()">
+            </div>
+
             <div style="margin-bottom: 25px;">
-                <label style="display: block; color: #555; font-weight: 600; margin-bottom: 10px; text-align: left;">🔐 登入密碼</label>
+                <label style="display: block; color: #555; font-weight: 600; margin-bottom: 10px; text-align: left;">🔐 密碼</label>
                 <input type="password" id="appLoginPassword" placeholder="輸入密碼" style="width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1.05em; transition: all 0.3s;" onkeypress="if(event.key==='Enter') verifyAppLogin()" autofocus>
             </div>
 
@@ -556,7 +561,8 @@
             <div id="appLoginMessage" style="margin-top: 15px; text-align: center; color: #f44336; font-size: 0.9em; min-height: 20px;"></div>
 
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 0.85em; color: #999;">
-                💡 預設密碼: <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">123456</code>
+                💡 預設帳號: <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">admin</code><br>
+                預設密碼: <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">123456</code>
             </div>
         </div>
     </div>
@@ -598,6 +604,9 @@
             </button>
             <button class="tab-button" onclick="switchTab('downtime')" style="background: #FFA500; color: white;">
                 ⏸️ Down Time 分析
+            </button>
+            <button class="tab-button" onclick="switchTab('accounts')" id="accountsTabBtn" style="background: #E91E63; color: white; display: none;">
+                👥 員工賬戶管理
             </button>
         </div>
 
@@ -817,6 +826,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- 員工賬戶管理 -->
+        <div id="accounts-tab" class="tab-content">
+            <div class="main-grid">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h2>👥 員工賬戶管理</h2>
+                    <div class="info-box">
+                        💡 主管可以在此添加/編輯/刪除員工賬戶
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="color: #333; margin-bottom: 20px;">➕ 新增員工賬戶</h3>
+                    <div class="input-group">
+                        <label style="font-weight: 600;">帳號</label>
+                        <input type="text" id="newUsername" placeholder="輸入帳號 (例: emp001)" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label style="font-weight: 600;">姓名</label>
+                        <input type="text" id="newName" placeholder="輸入員工姓名" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label style="font-weight: 600;">密碼</label>
+                        <input type="password" id="newPassword" placeholder="輸入密碼" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label style="font-weight: 600;">權限</label>
+                        <select id="newRole" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <option value="employee">👤 員工</option>
+                            <option value="manager">👨‍💼 主管</option>
+                        </select>
+                    </div>
+                    <button onclick="createNewAccount()" style="width: 100%; padding: 12px; margin-top: 20px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1em;">
+                        ✅ 創建賬戶
+                    </button>
+                </div>
+
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h3 style="color: #333; margin-bottom: 20px;">📋 現有賬戶列表</h3>
+                    <div id="accountsListContainer">
+                        <div class="empty-state">
+                            <p>加載中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -824,11 +880,12 @@
         const SHIFT_KEY = 'shiftData';
         const ADMIN_KEY = 'adminSession';
         const APP_LOGIN_KEY = 'appLoginSession';
-        const ADMIN_PASSWORD = '12345'; // 預設管理員密碼
-        const APP_PASSWORD = '123456'; // 應用登入密碼
+        const ACCOUNTS_KEY = 'appAccounts';
+        const CURRENT_USER_KEY = 'currentUser';
         let currentLanguage = localStorage.getItem('appLanguage') || 'zh-TW';
         let isAdminMode = localStorage.getItem(ADMIN_KEY) === 'true';
         let isAppLoggedIn = sessionStorage.getItem(APP_LOGIN_KEY) === 'true';
+        let currentUser = JSON.parse(sessionStorage.getItem(CURRENT_USER_KEY)) || null;
         let currentDownTimeView = 'employee'; // 'employee', 'hourly', 'period', 'datetime'
         let lastDownTimeData = null;
 
@@ -841,6 +898,133 @@
         let oneDriveHandle = null;
         let isOneDriveSyncEnabled = false;
         let syncCheckInterval = null;
+
+        // 初始化賬戶系統
+        function initializeAccounts() {
+            let accounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY));
+            if (!accounts) {
+                accounts = {
+                    'admin': {
+                        username: 'admin',
+                        password: '123456',
+                        role: 'manager',
+                        name: '主管',
+                        createdAt: new Date().toISOString()
+                    }
+                };
+                localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+            }
+            return accounts;
+        }
+
+        function getUserRole() {
+            return currentUser ? currentUser.role : null;
+        }
+
+        function isManager() {
+            return currentUser && (currentUser.role === 'manager' || currentUser.role === 'admin');
+        }
+
+        function isEmployee() {
+            return currentUser && currentUser.role === 'employee';
+        }
+
+        // 賬戶管理函數
+        function loadAccountsList() {
+            const accounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || {};
+            const container = document.getElementById('accountsListContainer');
+
+            if (Object.keys(accounts).length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>沒有賬戶</p></div>';
+                return;
+            }
+
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">';
+            html += '<th style="padding: 12px; text-align: left;">帳號</th>';
+            html += '<th style="padding: 12px; text-align: left;">姓名</th>';
+            html += '<th style="padding: 12px; text-align: left;">角色</th>';
+            html += '<th style="padding: 12px; text-align: center;">操作</th>';
+            html += '</tr>';
+
+            for (const [username, account] of Object.entries(accounts)) {
+                const roleName = account.role === 'manager' ? '👨‍💼 主管' : '👤 員工';
+                html += '<tr style="border-bottom: 1px solid #eee;">';
+                html += `<td style="padding: 12px;">${account.username}</td>`;
+                html += `<td style="padding: 12px;">${account.name}</td>`;
+                html += `<td style="padding: 12px;">${roleName}</td>`;
+                html += '<td style="padding: 12px; text-align: center;">';
+                if (username !== 'admin') {
+                    html += `<button onclick="deleteAccount('${username}')" style="padding: 6px 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">刪除</button>`;
+                }
+                html += '</td>';
+                html += '</tr>';
+            }
+            html += '</table>';
+
+            container.innerHTML = html;
+        }
+
+        function createNewAccount() {
+            const username = document.getElementById('newUsername').value.trim();
+            const name = document.getElementById('newName').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newRole').value;
+
+            if (!username || !name || !password) {
+                alert('❌ 請填寫所有欄位');
+                return;
+            }
+
+            const accounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || {};
+
+            if (accounts[username]) {
+                alert('❌ 帳號已存在');
+                return;
+            }
+
+            accounts[username] = {
+                username: username,
+                name: name,
+                password: password,
+                role: role,
+                createdAt: new Date().toISOString()
+            };
+
+            localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+
+            alert(`✅ 賬戶 ${username} 創建成功！`);
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('newRole').value = 'employee';
+
+            loadAccountsList();
+        }
+
+        function deleteAccount(username) {
+            if (username === 'admin') {
+                alert('❌ 不能刪除主管賬戶');
+                return;
+            }
+
+            if (confirm(`確定要刪除賬戶 ${username} 嗎？`)) {
+                const accounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || {};
+                delete accounts[username];
+                localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+                alert(`✅ 賬戶 ${username} 已刪除`);
+                loadAccountsList();
+            }
+        }
+
+        function showAccountsTab() {
+            const accountsBtn = document.getElementById('accountsTabBtn');
+            if (isManager()) {
+                accountsBtn.style.display = 'block';
+            } else {
+                accountsBtn.style.display = 'none';
+            }
+        }
 
         const translations = {
             'zh-TW': {
@@ -1125,17 +1309,32 @@
         };
 
         function verifyAppLogin() {
+            const username = document.getElementById('appLoginUsername').value.trim();
             const password = document.getElementById('appLoginPassword').value;
             const messageDiv = document.getElementById('appLoginMessage');
 
-            if (password === APP_PASSWORD) {
+            if (!username || !password) {
+                messageDiv.textContent = '❌ 請輸入帳號和密碼';
+                return;
+            }
+
+            const accounts = JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || {};
+            const account = accounts[username];
+
+            if (account && account.password === password) {
+                currentUser = {
+                    username: account.username,
+                    name: account.name,
+                    role: account.role
+                };
                 sessionStorage.setItem(APP_LOGIN_KEY, 'true');
+                sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
                 isAppLoggedIn = true;
                 document.getElementById('appLoginScreen').style.display = 'none';
                 updateLogoutButton();
-                // 不需要focus特定元素，應用已加載
+                updateUIByRole();
             } else {
-                messageDiv.textContent = '❌ 密碼錯誤，請重試';
+                messageDiv.textContent = '❌ 帳號或密碼錯誤，請重試';
                 document.getElementById('appLoginPassword').value = '';
                 document.getElementById('appLoginPassword').focus();
             }
@@ -1144,11 +1343,26 @@
         function logout() {
             if (confirm('確定要登出嗎？')) {
                 sessionStorage.removeItem(APP_LOGIN_KEY);
+                sessionStorage.removeItem(CURRENT_USER_KEY);
                 isAppLoggedIn = false;
+                currentUser = null;
                 document.getElementById('appLoginScreen').style.display = 'flex';
+                document.getElementById('appLoginUsername').value = '';
                 document.getElementById('appLoginPassword').value = '';
-                document.getElementById('appLoginPassword').focus();
+                document.getElementById('appLoginUsername').focus();
             }
+        }
+
+        function updateUIByRole() {
+            const downTimeTab = document.querySelector('[onclick="switchTab(\'downtime\')"]');
+            if (downTimeTab) {
+                if (isManager()) {
+                    downTimeTab.style.display = 'block';
+                } else {
+                    downTimeTab.style.display = 'none';
+                }
+            }
+            showAccountsTab();
         }
 
         function checkAppLogin() {
@@ -1193,6 +1407,11 @@
             }
             if (event && event.target) {
                 event.target.classList.add('active');
+            }
+
+            // Load accounts list when switching to accounts tab
+            if (tabName === 'accounts') {
+                loadAccountsList();
             }
 
             // 安全檢查：只在元素存在時才focus
@@ -3550,12 +3769,14 @@
         }
 
         function initApp() {
+            initializeAccounts();
             checkAppLogin();
             initLanguage();
             loadAndDisplayRecords();
             updateDashboard();
             updateShiftStatus();
             updateAdminMode();
+            updateUIByRole();
             updateOneDriveStatus();
             updateLogoutButton();
 
