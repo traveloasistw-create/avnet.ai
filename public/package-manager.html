@@ -649,6 +649,9 @@
                         </button>
                     </div>
                     <div class="button-group" style="margin-top: 10px;">
+                        <button class="btn-export" onclick="selectOneDriveFolder()" style="flex: 1; background: #9C27B0;">
+                            ⚙️ 導出設定 (OneDrive)
+                        </button>
                         <button class="btn-export" onclick="showOneDrivePath()" style="flex: 1; background: #FF6F00;">
                             📍 查看 OneDrive 位置
                         </button>
@@ -2280,7 +2283,29 @@
             }, 500);
         }
 
-        function exportAllData() {
+        let oneDriveFolderHandle = null;
+
+        async function selectOneDriveFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                alert('❌ 此瀏覽器不支持文件夾選擇\n請確保使用 Chrome、Edge 或其他現代瀏覽器');
+                return false;
+            }
+
+            try {
+                oneDriveFolderHandle = await window.showDirectoryPicker();
+                const folderName = oneDriveFolderHandle.name;
+                localStorage.setItem('oneDriveFolderHandle', JSON.stringify(oneDriveFolderHandle));
+                alert(`✅ 已連接 OneDrive 資料夾：${folderName}\n\n以後導出檔案會直接保存到這裡`);
+                return true;
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('選擇資料夾失敗:', err);
+                }
+                return false;
+            }
+        }
+
+        async function exportAllData() {
             const allRecords = getAllRecords();
 
             if (allRecords.length === 0) {
@@ -2310,11 +2335,6 @@
                 return values.map(v => `"${v}"`).join(',');
             }).join('\n');
 
-            // 下載 CSV
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-
             let fileName;
             if (currentLanguage === 'en') {
                 fileName = `all_records_${new Date().toISOString().split('T')[0]}.csv`;
@@ -2323,6 +2343,27 @@
             } else {
                 fileName = `全部記錄_${new Date().toISOString().split('T')[0]}.csv`;
             }
+
+            // 嘗試使用 File System Access API
+            if (oneDriveFolderHandle) {
+                try {
+                    const fileHandle = await oneDriveFolderHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(csvContent);
+                    await writable.close();
+
+                    showSuccessMessage(`✅ 已導出 ${allRecords.length} 條記錄\n📁 檔案已保存到 OneDrive`);
+                    return;
+                } catch (err) {
+                    console.error('寫入檔案失敗:', err);
+                    alert('⚠️ 無法保存到 OneDrive，改用下載方式\n\n' + err.message);
+                }
+            }
+
+            // 備用方案：瀏覽器下載
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
 
             link.setAttribute('href', url);
             link.setAttribute('download', fileName);
@@ -2333,19 +2374,20 @@
 
             showSuccessMessage(`✓ 已導出 ${allRecords.length} 條記錄`);
 
-            // 顯示 OneDrive 複製指引
-            setTimeout(() => {
-                alert(
-                    `✅ 檔案已下載：${fileName}\n\n` +
-                    `📁 下一步：\n` +
-                    `1. 打開下載資料夾\n` +
-                    `2. 複製 ${fileName}\n` +
-                    `3. 貼到 OneDrive 資料夾：\n` +
-                    `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
-                    `💡 其他電腦就能導入這個檔案了\n` +
-                    `📝 提示：CSV 檔案可用 Excel 或文字編輯器打開`
-                );
-            }, 500);
+            // 如果還沒有連接 OneDrive，提示用戶
+            if (!oneDriveFolderHandle) {
+                setTimeout(() => {
+                    alert(
+                        `⚠️ 未連接 OneDrive 資料夾\n\n` +
+                        `💡 建議：\n` +
+                        `1. 點擊右上角「導出設定」按鈕\n` +
+                        `2. 選擇你的 OneDrive 資料夾\n` +
+                        `3. 下次導出就會直接保存\n\n` +
+                        `📁 目前檔案已下載到：\n` +
+                        `   下載資料夾 → ${fileName}`
+                    );
+                }, 500);
+            }
         }
 
         function clearAllData() {
