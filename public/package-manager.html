@@ -623,8 +623,8 @@
                         <button class="btn-search" onclick="switchTab('import')" style="flex: 1; background: #2196F3;">
                             📥 批量導入數據
                         </button>
-                        <button class="btn-export" onclick="exportToExcel()" style="flex: 1;">
-                            📥 導出 Excel
+                        <button class="btn-export" onclick="exportAllData()" style="flex: 1; background: #4CAF50;">
+                            📥 導出全部資料
                         </button>
                     </div>
                     <div class="button-group" style="margin-top: 10px;">
@@ -2244,6 +2244,80 @@
             XLSX.writeFile(wb, fileName);
 
             showSuccessMessage(`${t('exportSuccess')} ${pairs.length} ${t('exportNotice')}`);
+
+            // 顯示 OneDrive 複製指引
+            setTimeout(() => {
+                alert(
+                    `✅ 檔案已下載：${fileName}\n\n` +
+                    `📁 下一步：\n` +
+                    `1. 打開下載資料夾\n` +
+                    `2. 複製 ${fileName}\n` +
+                    `3. 貼到 OneDrive 資料夾：\n` +
+                    `   C:\\Users\\Aldon\\OneDrive\\包貨管理系統\\\n\n` +
+                    `💡 其他電腦就能導入這個檔案了`
+                );
+            }, 500);
+        }
+
+        function exportAllData() {
+            const allRecords = getAllRecords();
+
+            if (allRecords.length === 0) {
+                alert(t('exportError'));
+                return;
+            }
+
+            let headerRow;
+            if (currentLanguage === 'en') {
+                headerRow = ['Tracking #', 'Employee', 'Status', 'Time', 'Timestamp'];
+            } else if (currentLanguage === 'id') {
+                headerRow = ['Nomor Pelacakan', 'Karyawan', 'Status', 'Waktu', 'Cap Waktu'];
+            } else {
+                headerRow = ['寄件編號', '員工', '狀態', '時間', '時間戳'];
+            }
+
+            const data = [
+                headerRow,
+                ...allRecords.map(r => [
+                    r.waybill,
+                    r.operator || '-',
+                    r.status === 'start' ? '開始' : '完成',
+                    formatTime(r.timestamp),
+                    r.timestamp
+                ])
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            let sheetName;
+            if (currentLanguage === 'en') {
+                sheetName = 'All Records';
+            } else if (currentLanguage === 'id') {
+                sheetName = 'Semua Catatan';
+            } else {
+                sheetName = '全部記錄';
+            }
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 18 },
+                { wch: 20 }
+            ];
+
+            let fileName;
+            if (currentLanguage === 'en') {
+                fileName = `all_records_${new Date().toISOString().split('T')[0]}.xlsx`;
+            } else if (currentLanguage === 'id') {
+                fileName = `semua_catatan_${new Date().toISOString().split('T')[0]}.xlsx`;
+            } else {
+                fileName = `全部記錄_${new Date().toISOString().split('T')[0]}.xlsx`;
+            }
+            XLSX.writeFile(wb, fileName);
+
+            showSuccessMessage(`✓ 已導出 ${allRecords.length} 條記錄`);
 
             // 顯示 OneDrive 複製指引
             setTimeout(() => {
