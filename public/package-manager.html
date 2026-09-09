@@ -1,8 +1,9 @@
 <!--
-  旅遊綠洲 包貨管理系統
-  版本: v1.2 (2026-09-09)
+  🧳 旅遊綠洲 包貨管理系統
+  版本: v1.3 (2026-09-09)
+  新增: LOGO 和品牌設計、天藍色主題、多賬戶系統
   改進: CSV 導出（無需伺服器）、完全離線支援
-  新增: 導出全部資料功能、Down Time 異常過濾
+  新增: 導出全部資料功能、Down Time 異常過濾、角色權限管理
   最後更新: 2026-09-09
 -->
 <!DOCTYPE html>
@@ -10,7 +11,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 包货管理系统</title>
+    <title>🧳 旅遊綠洲 - 包貨管理系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     <style>
         * {
@@ -21,7 +22,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -529,7 +530,7 @@
         <button id="oneDriveToggle" class="admin-button" onclick="connectOneDrive()" style="margin-right: 10px; padding: 8px 12px; background: rgba(0,120,215,0.3); color: white; border: 2px solid rgba(0,120,215,0.6); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">☁️ OneDrive</button>
         <button id="adminToggle" class="admin-button" onclick="showAdminLogin()" style="margin-right: 10px; padding: 8px 12px; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s;">🔐 Admin</button>
         <button id="logoutButton" class="admin-button" onclick="logout()" style="margin-right: 10px; padding: 8px 12px; background: rgba(244,67,54,0.3); color: white; border: 2px solid rgba(244,67,54,0.6); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.3s; display: none;">🚪 登出</button>
-        <div class="version-badge">v1.2</div>
+        <div class="version-badge">v1.3</div>
         <select id="languageSelect" onchange="setLanguage(this.value)">
             <option value="zh-TW">繁體中文</option>
             <option value="en">English</option>
@@ -585,8 +586,28 @@
 
     <div class="container">
         <header>
-            <h1 data-i18n="title">📦 包货管理系统 <span style="font-size: 0.5em; color: #999;">(v1.2)</span></h1>
-            <p data-i18n="subtitle">扫码输入 + 异常查询 | 电脑 + 手机通用</p>
+            <svg width="120" height="120" viewBox="0 0 400 400" style="margin: 0 auto 20px; display: block; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));">
+                <!-- 水波 -->
+                <path d="M 50 250 Q 100 200 150 250 T 250 250 T 350 250 L 350 350 Q 350 360 340 360 L 60 360 Q 50 360 50 350 Z" fill="#06b6d4" opacity="0.9"/>
+                <path d="M 60 280 Q 110 260 160 280 T 260 280 T 360 280 L 360 360 Q 360 370 350 370 L 50 370 Q 40 370 40 360 Z" fill="#0891b2" opacity="0.8"/>
+
+                <!-- 山 -->
+                <path d="M 80 250 L 150 120 L 180 180 L 250 80 L 280 150 L 320 250 Z" fill="#001f3f"/>
+                <path d="M 160 200 L 180 160 L 200 190 Z" fill="white" opacity="0.7"/>
+
+                <!-- 太阳 -->
+                <circle cx="100" cy="80" r="45" fill="#fbbf24" opacity="0.9"/>
+                <path d="M 100 30 Q 120 50 100 70 Q 80 50 100 30 Z" fill="#fbbf24" opacity="0.7"/>
+
+                <!-- 飞机 -->
+                <g transform="translate(280, 100) scale(1.2)">
+                    <path d="M 0 -8 L 15 0 L 0 8 L 5 0 Z" fill="#001f3f"/>
+                    <rect x="-2" y="-3" width="4" height="6" fill="#001f3f"/>
+                </g>
+            </svg>
+            <h1 style="font-size: 2.8em; margin-bottom: 5px;">🧳 旅遊綠洲</h1>
+            <h2 style="font-size: 1.8em; font-weight: 400; color: rgba(255,255,255,0.95); margin-bottom: 10px;">📦 包貨管理系統 <span style="font-size: 0.5em; color: rgba(255,255,255,0.7);">(v1.3)</span></h2>
+            <p data-i18n="subtitle" style="color: rgba(255,255,255,0.9);">掃碼輸入 + 異常查詢 | 電腦 + 手機通用</p>
         </header>
 
         <div class="tabs">
