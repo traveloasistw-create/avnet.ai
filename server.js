@@ -20,6 +20,7 @@ import {
   localSubnet,
 } from './lib/probe.js';
 import { logAction, recentLogs } from './lib/audit.js';
+import { health } from './lib/health.js';
 import { loadNotify, saveNotify, sendTelegram, pushAlert } from './lib/notify.js';
 import { MotionWatcher } from './lib/motion.js';
 import {
@@ -549,6 +550,15 @@ app.delete('/api/admin/users/:username', requireAdmin, (req, res) => {
 
 // 操作日誌（最近 100 筆）
 app.get('/api/admin/logs', requireAdmin, (req, res) => res.json(recentLogs(100)));
+
+// 系統健康狀況：CPU、記憶體、串流檔案量、各相機狀態
+app.get('/api/admin/health', requireAdmin, (req, res) => {
+  try {
+    res.json(health(manager));
+  } catch (err) {
+    res.status(500).json({ error: err.message || '讀取失敗' });
+  }
+});
 
 // 主機硬碟空間
 app.get('/api/admin/disk', requireAdmin, (req, res) => {

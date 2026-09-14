@@ -215,6 +215,160 @@ async function loadDisk() {
   el.textContent = `💾 主機硬碟：剩餘 ${fmtGB(d.free)} / 共 ${fmtGB(d.total)}（${pctFree}%）${warn}`;
 }
 
+// ---- 系統健康檢查（每 5 秒更新）----
+function fmtMB(b) {
+  return (b / 1048576).toFixed(0) + ' MB';
+}
+function fmtDuration(sec) {
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d} 天 ${h} 小時`;
+  if (h > 0) return `${h} 小時 ${m} 分`;
+  return `${m} 分鐘`;
+}
+
+function healthCard(label, value, note, level) {
+  return (
+    `<div class="health-card ${level || ''}">` +
+    `<div class="health-label">${label}</div>` +
+    `<div class="health-value">${value}</div>` +
+    `<div class="health-note">${note || ''}</div>` +
+    '</div>'
+  );
+}
+
+async function loadHealth() {
+  let h;
+  try {
+    h = await getJSON('/api/admin/health');
+  } catch {
+    return;
+  }
+
+  const problems = [];
+  const cards = [];
+
+  // CPU
+  const cpu = h.cpuPercent;
+  let cpuLevel = 'good';
+  if (cpu !== null && cpu >= 85) {
+    cpuLevel = 'bad';
+    problems.push('CPU 使用率過高');
+  } else if (cpu !== null && cpu >= 65) {
+    cpuLevel = 'warn';
+  }
+  cards.push(
+    healthCard(
+      'CPU 使用率',
+      cpu === null ? '取樣中…' : cpu + '%',
+      `${h.cpuCount} 核心`,
+      cpuLevel
+    )
+  );
+
+  // 記憶體
+  const memPct = Math.round((h.memUsed / h.memTotal) * 100);
+  let memLevel = 'good';
+  if (memPct >= 90) {
+    memLevel = 'bad';
+    problems.push('記憶體快用完了');
+  } else if (memPct >= 75) {
+    memLevel = 'warn';
+  }
+  cards.push(
+    healthCard(
+      '記憶體',
+      memPct + '%',
+      `全機 ${fmtMB(h.memUsed)} / ${fmtMB(h.memTotal)}`,
+      memLevel
+    )
+  );
+
+  // 我們這支程式自己佔多少（判斷有沒有記憶體洩漏）
+  const rssMB = h.memProcess / 1048576;
+  let rssLevel = 'good';
+  if (rssMB > 1500) {
+    rssLevel = 'bad';
+    problems.push('看板程式佔用記憶體異常高，建議重啟');
+  } else if (rssMB > 800) {
+    rssLevel = 'warn';
+  }
+  cards.push(
+    healthCard('看板程式佔用', fmtMB(h.memProcess), '正常應在 300 MB 內', rssLevel)
+  );
+
+  // 相機狀態
+  const bad = (h.byStatus.stopped || 0) + (h.byStatus.error || 0);
+  let camLevel = 'good';
+  if (bad > 0) {
+    camLevel = 'bad';
+    problems.push(`${bad} 支相機連線異常`);
+  }
+  cards.push(
+    healthCard(
+      '攝影機',
+      `${h.byStatus.running || 0} / ${h.cameraCount} 正常`,
+      bad > 0 ? `${bad} 支異常` : '全部正常',
+      camLevel
+    )
+  );
+
+  // 串流暫存檔（異常變大代表舊檔沒被清掉）
+  let stLevel = 'good';
+  if (h.streams.bytes > 800 * 1048576) {
+    stLevel = 'bad';
+    problems.push('串流暫存檔異常膨脹，建議重啟');
+  } else if (h.streams.bytes > 300 * 1048576) {
+    stLevel = 'warn';
+  }
+  cards.push(
+    healthCard(
+      '串流暫存',
+      fmtMB(h.streams.bytes),
+      `${h.streams.files} 個檔案`,
+      stLevel
+    )
+  );
+
+  // 連續執行時間
+  let upLevel = 'good';
+  const upDays = h.uptimeSec / 86400;
+  if (upDays > 14) {
+    upLevel = 'warn';
+  }
+  cards.push(
+    healthCard(
+      '已連續執行',
+      fmtDuration(h.uptimeSec),
+      upDays > 14 ? '跑很久了，可考慮重啟一次' : '未重啟',
+      upLevel
+    )
+  );
+
+  document.getElementById('healthGrid').innerHTML = cards.join('');
+
+  // 總結
+  const verdict = document.getElementById('healthVerdict');
+  if (problems.length === 0) {
+    verdict.textContent = '✅ 一切正常';
+    verdict.className = 'count-badge health-ok';
+  } else {
+    verdict.textContent = '⚠️ ' + problems.join('、');
+    verdict.className = 'count-badge health-bad';
+  }
+
+  // 有問題的相機才列出來
+  const badCams = h.perCamera.filter(
+    (c) => c.status === 'stopped' || c.status === 'error'
+  );
+  document.getElementById('healthCams').innerHTML = badCams.length
+    ? '<p class="user-note">連線異常的相機：' +
+      badCams.map((c) => c.name).join('、') +
+      '</p>'
+    : '';
+}
+
 // 通知設定（Telegram）
 async function loadNotify() {
   try {
@@ -269,7 +423,9 @@ async function init() {
   loadOnline();
   loadDisk();
   loadLogs();
+  loadHealth();
   setInterval(loadOnline, 5000);
+  setInterval(loadHealth, 5000);
 }
 
 // 新增帳號
