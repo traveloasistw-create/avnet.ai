@@ -45,7 +45,22 @@ const PUBLIC = path.join(__dirname, 'public');
 // ---- 載入設定並啟動串流 ----------------------------------------------------
 const { recording, cameras } = loadConfig();
 
-fs.rmSync(STREAMS_DIR, { recursive: true, force: true });
+// 開機清空串流暫存：盡量刪，但就算刪不掉（例如上一份還在跑、
+// Windows 鎖住檔案）也不能讓整套系統起不來——逐一嘗試、忽略失敗。
+function clearStreamsBestEffort() {
+  try {
+    for (const sub of fs.readdirSync(STREAMS_DIR)) {
+      try {
+        fs.rmSync(path.join(STREAMS_DIR, sub), { recursive: true, force: true });
+      } catch {
+        /* 某個檔案被鎖住就跳過，不影響啟動 */
+      }
+    }
+  } catch {
+    /* streams 資料夾還不存在，等下面建立 */
+  }
+}
+clearStreamsBestEffort();
 fs.mkdirSync(STREAMS_DIR, { recursive: true });
 fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 
@@ -584,6 +599,22 @@ const server = app.listen(PORT, () => {
     console.log('   錄影：關閉');
   }
   console.log('');
+});
+
+// 連接埠被佔用（通常是「已經有一份在跑了」）——給看得懂的說明
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error('\n========================================================');
+    console.error(`  ⚠️  連接埠 ${PORT} 已被佔用。`);
+    console.error('  系統「已經有一份在執行中」了，不需要再開一次。');
+    console.error('');
+    console.error('  → 直接打開瀏覽器看： http://localhost:' + PORT);
+    console.error('  → 若要重新啟動，請先執行 stop.bat 再啟動。');
+    console.error('========================================================\n');
+    process.exit(1);
+  }
+  console.error('伺服器發生錯誤：', err.message);
+  process.exit(1);
 });
 
 // ---- 優雅關閉 ------------------------------------------------------------
