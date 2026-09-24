@@ -39,7 +39,7 @@
   <h1>標籤依儲位排序</h1>
   <p class="sub">選擇出貨標籤 PDF 和庫存盤點 Excel，程式會依照每張標籤商品在 Excel 裡的「儲位」重新排列頁面，
     輸出「原檔名_依儲位排序.pdf」。同一儲位內依選項貨號排，找不到儲位的放最後；
-    每張標籤右下角會加印放大的規格ID後三碼，方便辨識。</p>
+    右上角規格ID的後三碼會放大 1.5 倍，方便辨識。</p>
 
   <div class="card">
     <label class="file"><b>1. 標籤 PDF</b><input type="file" id="pdfFile" accept=".pdf"></label>
@@ -80,12 +80,16 @@ async function readLabels(buf) {
       const x = it.transform[4], y = it.transform[5];
       let row = rows.find((r) => Math.abs(r.y - y) < 2);
       if (!row) rows.push(row = { y, parts: [] });
-      row.parts.push({ x, s: it.str });
+      row.parts.push({ x, s: it.str, w: it.width, size: Math.hypot(it.transform[2], it.transform[3]) });
     }
     rows.sort((a, b) => b.y - a.y);
     const lines = rows.map((r) => r.parts.sort((a, b) => a.x - b.x).map((q) => q.s).join('').trim());
     // 標籤格式：0 商品ID_ / 1 規格ID / 2 商品名 / 3 規格[貨號 / 4 物流單號 / 5 ...
-    labels.push({ page: p - 1, modelId: lines[1] || '', name: lines[2] || '', spec: lines[3] || '', track: lines[4] || '' });
+    // 第二行數字（規格ID）的位置，輸出時要在原處把後三碼放大
+    const r1 = rows[1] && rows[1].parts;
+    const modelBox = r1 && { x: r1[0].x, y: rows[1].y, right: Math.max(...r1.map((q) => q.x + q.w)),
+                             size: r1[0].size };
+    labels.push({ page: p - 1, modelId: lines[1] || '', modelBox, name: lines[2] || '', spec: lines[3] || '', track: lines[4] || '' });
   }
   return labels;
 }
@@ -165,18 +169,22 @@ function sortLabels(labels, stock) {
 async function buildPdf(buf, order) {
   const src = await PDFLib.PDFDocument.load(buf);
   const dst = await PDFLib.PDFDocument.create();
-  const font = await dst.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const font = await dst.embedFont(PDFLib.StandardFonts.Helvetica);
   const pages = await dst.copyPages(src, order.map((l) => l.page));
   pages.forEach((p, i) => {
     dst.addPage(p);
-    // 右上角第二行數字（如 89558606923）的後三碼，放大印在右下角「南」字右邊的空白處
-    const tail = order[i].modelId.replace(/\D/g, '').slice(-3);
-    if (!tail) return;
-    const box = { right: 101, bottom: 5.5, width: 28, height: 12 };   // 單位 pt，標籤 113×57
-    const size = Math.min(16, box.width / font.widthOfTextAtSize(tail, 1),
-                          box.height / font.heightAtSize(1, { descender: false }));
-    const x = box.right - font.widthOfTextAtSize(tail, size);
-    p.drawText(tail, { x, y: box.bottom, size, font, color: PDFLib.rgb(0, 0, 0) });
+    // 右上角第二行數字（如 89558606923）在原位置重寫，後三碼放大 1.5 倍、右邊對齊原本的位置
+    const { modelId, modelBox: b } = order[i];
+    if (!b || !/^\d{4,}$/.test(modelId)) return;
+    const head = modelId.slice(0, -3), tail = modelId.slice(-3);
+    const big = b.size * 1.5;
+    const tailW = font.widthOfTextAtSize(tail, big);
+    const headW = font.widthOfTextAtSize(head, b.size);
+    // 先用白底蓋掉原本那一行
+    p.drawRectangle({ x: b.x - 0.3, y: b.y - b.size * 0.25, width: b.right - b.x + 0.6,
+                      height: b.size * 1.05, color: PDFLib.rgb(1, 1, 1) });
+    p.drawText(head, { x: b.right - tailW - headW, y: b.y, size: b.size, font, color: PDFLib.rgb(0, 0, 0) });
+    p.drawText(tail, { x: b.right - tailW, y: b.y, size: big, font, color: PDFLib.rgb(0, 0, 0) });
   });
   return dst.save();
 }
