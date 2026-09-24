@@ -38,7 +38,8 @@
 <main>
   <h1>標籤依儲位排序</h1>
   <p class="sub">選擇出貨標籤 PDF 和庫存盤點 Excel，程式會依照每張標籤商品在 Excel 裡的「儲位」重新排列頁面，
-    輸出「原檔名 衣櫥.pdf」。同一儲位內依選項貨號排，找不到儲位的放最後。</p>
+    輸出「原檔名_依儲位排序.pdf」。同一儲位內依選項貨號排，找不到儲位的放最後；
+    每張標籤右下角會加印放大的規格ID後三碼，方便辨識。</p>
 
   <div class="card">
     <label class="file"><b>1. 標籤 PDF</b><input type="file" id="pdfFile" accept=".pdf"></label>
@@ -84,7 +85,7 @@ async function readLabels(buf) {
     rows.sort((a, b) => b.y - a.y);
     const lines = rows.map((r) => r.parts.sort((a, b) => a.x - b.x).map((q) => q.s).join('').trim());
     // 標籤格式：0 商品ID_ / 1 規格ID / 2 商品名 / 3 規格[貨號 / 4 物流單號 / 5 ...
-    labels.push({ page: p - 1, name: lines[2] || '', spec: lines[3] || '', track: lines[4] || '' });
+    labels.push({ page: p - 1, modelId: lines[1] || '', name: lines[2] || '', spec: lines[3] || '', track: lines[4] || '' });
   }
   return labels;
 }
@@ -164,8 +165,19 @@ function sortLabels(labels, stock) {
 async function buildPdf(buf, order) {
   const src = await PDFLib.PDFDocument.load(buf);
   const dst = await PDFLib.PDFDocument.create();
+  const font = await dst.embedFont(PDFLib.StandardFonts.HelveticaBold);
   const pages = await dst.copyPages(src, order.map((l) => l.page));
-  pages.forEach((p) => dst.addPage(p));
+  pages.forEach((p, i) => {
+    dst.addPage(p);
+    // 右上角第二行數字（如 89558606923）的後三碼，放大印在右下角「南」字右邊的空白處
+    const tail = order[i].modelId.replace(/\D/g, '').slice(-3);
+    if (!tail) return;
+    const box = { right: 101, bottom: 5.5, width: 28, height: 12 };   // 單位 pt，標籤 113×57
+    const size = Math.min(16, box.width / font.widthOfTextAtSize(tail, 1),
+                          box.height / font.heightAtSize(1, { descender: false }));
+    const x = box.right - font.widthOfTextAtSize(tail, size);
+    p.drawText(tail, { x, y: box.bottom, size, font, color: PDFLib.rgb(0, 0, 0) });
+  });
   return dst.save();
 }
 
@@ -200,7 +212,7 @@ $('run').onclick = async () => {
     const labels = await readLabels(pdfBuf);
     const order = sortLabels(labels, stock);
     const bytes = await buildPdf(pdfBuf, order);
-    const outName = pdfFile.name.replace(/\.pdf$/i, '') + ' 衣櫥.pdf';
+    const outName = pdfFile.name.replace(/\.pdf$/i, '') + '_依儲位排序.pdf';
     download(bytes, outName);
     showResult(order);
 
