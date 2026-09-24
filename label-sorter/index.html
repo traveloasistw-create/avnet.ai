@@ -6,53 +6,158 @@
 <title>標籤依儲位排序</title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #667085;
-    --line: #e3e6eb; --accent: #2563eb; --warn-bg: #fff4e5; --warn: #b54708;
-    --err-bg: #fdecec; --err: #b42318;
+    --bg: #f3f5f8; --card: #ffffff; --text: #18202f; --muted: #6b7486; --line: #e4e8ee;
+    --accent: #2458e6; --accent-soft: #eaf0fe; --ok: #127a4a; --ok-soft: #e6f5ed;
+    --warn: #a15c07; --warn-soft: #fff4e2; --err: #b42318; --err-soft: #fdeceb;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px rgba(16,24,40,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11151c; --card: #1a2029; --text: #e7ebf2; --muted: #98a2b3; --line: #2a323e;
+      --accent: #6b93ff; --accent-soft: #1f2a44; --ok: #4cc38a; --ok-soft: #16302a;
+      --warn: #f0b35a; --warn-soft: #3a2c16; --err: #ff8a80; --err-soft: #3d1f1f; --shadow: none;
+    }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 15px/1.6 system-ui, "Microsoft JhengHei", "PingFang TC", sans-serif; }
-  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 20px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-          padding: 16px; margin-bottom: 16px; }
-  label.file { display: block; margin-bottom: 12px; }
-  label.file b { display: block; margin-bottom: 4px; }
-  button { font: inherit; padding: 8px 18px; border-radius: 8px; border: 0;
-           background: var(--accent); color: #fff; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: default; }
-  #status { margin-top: 12px; white-space: pre-line; }
-  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; }
-  .err { background: var(--err-bg); color: var(--err); border-radius: 8px; padding: 10px 12px; }
-  .table-wrap { overflow-x: auto; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 56px; }
+
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  .logo { width: 52px; height: 52px; border-radius: 14px; color: #fff;
+          background: linear-gradient(135deg, #3b6cff, #1d3fb8); box-shadow: 0 6px 16px rgba(36,88,230,.3);
+          display: grid; place-items: center; flex: none; }
+  h1 { font-size: 24px; margin: 0; line-height: 1.3; letter-spacing: .5px; }
+  .sub { color: var(--muted); margin: 0; font-size: 14px; }
+
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+          padding: 20px; box-shadow: var(--shadow); }
+  .step-title { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 14px; }
+  .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+         font-size: 13px; display: grid; place-items: center; }
+
+  .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+          min-height: 170px; border: 2px dashed var(--line); border-radius: 12px; padding: 16px;
+          text-align: center; color: var(--muted); cursor: pointer; transition: .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .drop b { color: var(--text); font-weight: 600; margin-top: 6px; }
+  .drop svg { color: var(--accent); opacity: .85; }
+  .drop.has { border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+  .drop input { display: none; }
+
+  .loaded { display: flex; flex-direction: column; gap: 8px; min-height: 170px; padding: 18px;
+            border-radius: 12px; background: var(--accent-soft); border: 1px solid transparent; }
+  .loaded.over { border-color: var(--accent); }
+  .cap { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .version { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .badge { font: 800 30px/1.1 ui-monospace, "SF Mono", Consolas, monospace; letter-spacing: .5px; color: var(--accent); }
+  .pill { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); }
+  .pill.old { background: var(--warn-soft); color: var(--warn); }
+  .meta { color: var(--muted); font-size: 13px; word-break: break-all; }
+  .meta div { margin: 2px 0; }
+  .link-btn { align-self: flex-start; margin-top: auto; font: inherit; font-size: 14px; background: var(--card);
+              border: 1px solid var(--line); color: var(--text); padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+  .link-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .file-name { font-weight: 600; font-size: 16px; color: var(--text); word-break: break-all; }
+
+  .action { margin-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  #run { display: inline-flex; align-items: center; gap: 10px; font: 600 17px/1 inherit; font-family: inherit;
+         padding: 16px 32px; border-radius: 12px; border: 0; color: #fff; cursor: pointer;
+         background: linear-gradient(135deg, #3b6cff, #1d3fb8); box-shadow: 0 6px 16px rgba(36,88,230,.3); transition: .15s; }
+  #run:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(36,88,230,.38); }
+  #run:disabled { box-shadow: none; }
+  #run:disabled { opacity: .4; cursor: default; }
+  #status { flex: 1; min-width: 240px; white-space: pre-line; font-size: 14px; }
+  #status.ok { color: var(--ok); } #status.warn { color: var(--warn); } #status.err { color: var(--err); }
+
+  .result { margin-top: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow); }
+  .stat .v { font-size: 28px; font-weight: 700; line-height: 1.3; }
+  .stat .k { font-size: 13px; color: var(--muted); }
+  .stat.warn .v { color: var(--warn); } .stat.err .v { color: var(--err); }
+  .table-card { padding: 0; overflow: hidden; }
+  .table-head { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between;
+                gap: 12px; flex-wrap: wrap; font-weight: 600; }
+  .legend { font-weight: 400; font-size: 13px; color: var(--muted); display: flex; gap: 14px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .table-wrap { overflow: auto; max-height: 560px; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  th, td { border-bottom: 1px solid var(--line); padding: 4px 8px; text-align: left; white-space: nowrap; }
-  th { position: sticky; top: 0; background: var(--card); }
-  tr.guess td { background: var(--warn-bg); }
-  tr.none td { background: var(--err-bg); }
+  th, td { padding: 7px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--card); color: var(--muted); font-weight: 500; z-index: 1; }
+  td.n { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .loc { display: inline-block; min-width: 34px; text-align: center; padding: 1px 8px; border-radius: 6px;
+         background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  tr.guess td { background: var(--warn-soft); } tr.none td { background: var(--err-soft); }
+  tr.group-start td { border-top: 2px solid var(--line); }
+  footer { margin-top: 28px; color: var(--muted); font-size: 12px; text-align: center; }
 </style>
 </head>
 <body>
 <main>
-  <h1>標籤依儲位排序</h1>
-  <p class="sub">選擇出貨標籤 PDF 和庫存盤點 Excel，程式會依照每張標籤商品在 Excel 裡的「儲位」重新排列頁面，
-    輸出「原檔名_依儲位排序.pdf」。同一儲位內依選項貨號排，找不到儲位的放最後；
-    右上角規格ID的後三碼會放大 1.5 倍，方便辨識。</p>
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+    </div>
+    <div>
+      <h1>標籤依儲位排序</h1>
+      <p class="sub">依庫存盤點表的儲位重新排列出貨標籤，並放大右上角規格ID後三碼</p>
+    </div>
+  </header>
 
-  <div class="card">
-    <label class="file"><b>1. 標籤 PDF</b><input type="file" id="pdfFile" accept=".pdf"></label>
-    <label class="file"><b>2. 庫存盤點 Excel</b><input type="file" id="xlsxFile" accept=".xlsx,.xls,.csv"></label>
-    <button id="run" disabled>排序並下載</button>
+  <div class="steps">
+    <section class="card">
+      <div class="step-title"><span class="num">1</span>庫存盤點表</div>
+      <label class="drop" id="stockDrop">
+        <input type="file" id="xlsxFile" accept=".xlsx,.xls,.csv">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg>
+        <b>拖曳或點選 Excel</b>
+        <span>只需匯入一次，之後會自動記住</span>
+      </label>
+      <div class="loaded" id="stockInfo" hidden>
+        <div class="cap">目前使用版本</div>
+        <div class="version"><span class="badge" id="stockVersion"></span><span class="pill" id="stockAge"></span></div>
+        <div class="meta">
+          <div id="stockName"></div>
+          <div id="stockMeta"></div>
+        </div>
+        <button class="link-btn" id="stockReplace" type="button">更換庫存表</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="step-title"><span class="num">2</span>出貨標籤 PDF</div>
+      <label class="drop" id="pdfDrop">
+        <input type="file" id="pdfFile" accept=".pdf">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg>
+        <b>拖曳或點選標籤 PDF</b>
+        <span>例如 0924S-1.pdf</span>
+      </label>
+    </section>
+  </div>
+
+  <div class="action">
+    <button id="run" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>排序並下載</button>
     <div id="status"></div>
   </div>
 
-  <div class="card" id="resultCard" hidden>
-    <b>排序結果</b>
-    <p class="sub" style="margin:4px 0 8px">黃色 = 規格文字對不上，用最相近的商品推測，請確認；紅色 = 找不到，排在最後。</p>
-    <div class="table-wrap"><table id="result"></table></div>
-  </div>
+  <section class="result" id="resultCard" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="card table-card">
+      <div class="table-head">
+        <span>撿貨順序</span>
+        <span class="legend"><span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>推測儲位，請確認</span>
+          <span><i style="background:var(--err-soft);border:1px solid var(--err)"></i>找不到儲位（排最後）</span></span>
+      </div>
+      <div class="table-wrap"><table id="result"></table></div>
+    </div>
+  </section>
+
+  <footer>所有處理都在這台電腦的瀏覽器內完成，檔案不會上傳</footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -199,37 +304,134 @@ function download(bytes, filename) {
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 function showResult(order) {
-  const rows = order.map((l, i) => `<tr class="${l.how === 'exact' ? '' : l.how}">
-      <td>${i + 1}</td><td>${l.page + 1}</td><td>${esc(l.row?.loc || '—')}</td><td>${esc(l.row?.sku || '—')}</td>
-      <td>${esc(l.spec)}</td><td>${esc(l.track)}</td></tr>`).join('');
-  $('result').innerHTML = `<tr><th>新順序</th><th>原頁</th><th>儲位</th><th>選項貨號</th><th>標籤規格</th><th>物流單號</th></tr>${rows}`;
+  let prev = null;
+  const rows = order.map((l, i) => {
+    const loc = l.row?.loc || '';
+    const cls = [l.how === 'exact' ? '' : l.how, i && loc !== prev ? 'group-start' : ''].join(' ').trim();
+    prev = loc;
+    return `<tr class="${cls}"><td class="n">${i + 1}</td>
+      <td>${loc ? `<span class="loc">${esc(loc)}</span>` : '—'}</td>
+      <td>${esc(l.row?.sku || '—')}</td><td>${esc(l.spec)}</td>
+      <td class="n">${esc(l.modelId.slice(-3))}</td><td class="n">${l.page + 1}</td><td class="n">${esc(l.track)}</td></tr>`;
+  }).join('');
+  $('result').innerHTML = `<thead><tr><th>#</th><th>儲位</th><th>選項貨號</th><th>標籤規格</th>
+    <th>後三碼</th><th>原頁</th><th>物流單號</th></tr></thead><tbody>${rows}</tbody>`;
+
+  const count = (how) => order.filter((l) => l.how === how).length;
+  const locs = new Set(order.map((l) => l.row?.loc).filter(Boolean)).size;
+  const stat = (v, k, cls = '') => `<div class="stat ${v && cls}"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  $('stats').innerHTML = stat(order.length, '張標籤') + stat(locs, '個儲位') +
+    stat(count('guess'), '張推測儲位', 'warn') + stat(count('none'), '張找不到儲位', 'err');
   $('resultCard').hidden = false;
 }
 
+// ---------- 記住上次匯入的庫存表（存在這台電腦的瀏覽器） ----------
+const store = {
+  open() {
+    return new Promise((ok, fail) => {
+      const req = indexedDB.open('label-sorter', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => ok(req.result); req.onerror = () => fail(req.error);
+    });
+  },
+  async get(key) {
+    const db = await this.open();
+    return new Promise((ok, fail) => {
+      const req = db.transaction('kv').objectStore('kv').get(key);
+      req.onsuccess = () => ok(req.result); req.onerror = () => fail(req.error);
+    });
+  },
+  async set(key, value) {
+    const db = await this.open();
+    return new Promise((ok, fail) => {
+      const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(value, key);
+      tx.oncomplete = ok; tx.onerror = () => fail(tx.error);
+    });
+  },
+};
+
+// 從檔名取日期當版本：庫存盤點表_20260924_1790228665656.xlsx → V20260924；檔名沒日期就用檔案修改日
+function versionOf(file) {
+  const m = file.name.match(/(20\d{2})(\d{2})(\d{2})/);
+  const d = m ? new Date(+m[1], m[2] - 1, +m[3]) : new Date(file.lastModified);
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  return { version: 'V' + ymd, date: d.getTime() };
+}
+
+let stock = null;   // { fileName, version, date, importedAt, rows }
+
+function showStock() {
+  $('stockDrop').hidden = !!stock; $('stockInfo').hidden = !stock;
+  if (!stock) return;
+  const days = Math.floor((Date.now() - stock.date) / 86400000);
+  $('stockVersion').textContent = stock.version;
+  $('stockAge').textContent = days <= 0 ? '今天的版本' : `${days} 天前的版本`;
+  $('stockAge').className = 'pill' + (days >= 7 ? ' old' : '');
+  $('stockName').textContent = stock.fileName;
+  $('stockMeta').textContent = `${stock.rows.length.toLocaleString()} 筆商品 · 匯入於 ${new Date(stock.importedAt).toLocaleString('zh-TW', { hour12: false })}`;
+}
+
+async function importStock(file) {
+  const status = $('status');
+  try {
+    const rows = readStock(await file.arrayBuffer());
+    stock = { fileName: file.name, ...versionOf(file), importedAt: Date.now(), rows };
+    showStock();
+    try { await store.set('stock', stock); }
+    catch (e) { console.warn(e); status.className = 'warn'; status.textContent = '瀏覽器無法記住庫存表，這次可以用，下次打開需要重新匯入。'; return; }
+    status.className = ''; status.textContent = '';
+  } catch (e) {
+    console.error(e); status.className = 'err'; status.textContent = '庫存表讀取失敗：' + e.message;
+  } finally { ready(); }
+}
+
 // ---------- 介面 ----------
-const ready = () => { $('run').disabled = !($('pdfFile').files[0] && $('xlsxFile').files[0]); };
-$('pdfFile').onchange = ready; $('xlsxFile').onchange = ready;
+let pdfFile = null;
+const ready = () => { $('run').disabled = !(pdfFile && stock); };
+
+function setPdf(file) {
+  pdfFile = file;
+  $('pdfDrop').classList.add('has');
+  $('pdfDrop').innerHTML = `<input type="file" id="pdfFile" accept=".pdf"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg><span class="file-name">${esc(file.name)}</span>
+    <span>${(file.size / 1024).toFixed(0)} KB · 點此更換</span>`;
+  $('pdfFile').onchange = (e) => e.target.files[0] && setPdf(e.target.files[0]);
+  ready();
+}
+
+function dropZone(zone, accept, onFile) {
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault(); zone.classList.remove('over');
+    const f = [...e.dataTransfer.files].find((x) => accept.test(x.name));
+    if (f) onFile(f);
+  });
+}
+dropZone($('pdfDrop'), /\.pdf$/i, setPdf);
+dropZone($('stockDrop'), /\.(xlsx|xls|csv)$/i, importStock);
+dropZone($('stockInfo'), /\.(xlsx|xls|csv)$/i, importStock);
+$('pdfFile').onchange = (e) => e.target.files[0] && setPdf(e.target.files[0]);
+$('xlsxFile').onchange = (e) => { if (e.target.files[0]) importStock(e.target.files[0]); e.target.value = ''; };
+$('stockReplace').onclick = () => $('xlsxFile').click();
+
+store.get('stock').then((s) => { if (s && s.rows) { stock = s; showStock(); ready(); } })
+  .catch((e) => console.warn('讀取已記住的庫存表失敗', e));
 
 $('run').onclick = async () => {
   const status = $('status');
   $('run').disabled = true; status.className = ''; status.textContent = '處理中…';
   try {
-    const pdfFile = $('pdfFile').files[0];
     const pdfBuf = await pdfFile.arrayBuffer();
-    const stock = readStock(await $('xlsxFile').files[0].arrayBuffer());
     const labels = await readLabels(pdfBuf);
-    const order = sortLabels(labels, stock);
+    const order = sortLabels(labels, stock.rows);
     const bytes = await buildPdf(pdfBuf, order);
     const outName = pdfFile.name.replace(/\.pdf$/i, '') + '_依儲位排序.pdf';
     download(bytes, outName);
     showResult(order);
-
-    const guess = order.filter((l) => l.how === 'guess'), none = order.filter((l) => l.how === 'none');
-    let msg = `完成：共 ${order.length} 張標籤，已下載「${outName}」。`;
-    if (guess.length) msg += `\n${guess.length} 張是推測儲位（表格黃色），請確認。`;
-    if (none.length) msg += `\n${none.length} 張找不到儲位，排在最後（表格紅色）。`;
-    status.className = guess.length || none.length ? 'warn' : '';
-    status.textContent = msg;
+    const bad = order.filter((l) => l.how !== 'exact').length;
+    status.className = bad ? 'warn' : 'ok';
+    status.textContent = `已下載「${outName}」（使用庫存表 ${stock.version}）` +
+      (bad ? `\n有 ${bad} 張標籤需要確認，請看下方表格的顏色標示` : '');
   } catch (e) {
     console.error(e);
     status.className = 'err';
